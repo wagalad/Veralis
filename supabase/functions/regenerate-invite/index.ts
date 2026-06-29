@@ -1,0 +1,59 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+function generateInviteCode(): string {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+  const bytes = crypto.getRandomValues(new Uint8Array(8))
+  return Array.from(bytes, b => chars[b % chars.length]).join('')
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
+
+  const jwt = req.headers.get('Authorization')?.replace('Bearer ', '')
+  if (!jwt) return json({ error: 'Unauthorized' }, 401)
+
+  const admin = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  )
+
+  const { data: { user }, error: authErr } = await admin.auth.getUser(jwt)
+  if (authErr || !user) return json({ error: 'Unauthorized' }, 401)
+
+  const { team_id } = await req.json()
+  if (!team_id) return json({ error: 'team_id is required' }, 400)
+
+  // Verify caller is an admin of this team — server-side, not trusted from client
+  const { data: membership } = await admin
+    .from('team_memberships')
+    .select('role')
+    .eq('user_id', user.id)
+    .eq('team_id', team_id)
+    .maybeSingle()
+
+  if (!membership) return json({ error: 'You are not a member of this team.' }, 403)
+  if (membership.role !== 'admin') return json({ error: 'Only admins can regenerate the invite code.' }, 403)
+
+  const new_code = generateInviteCode()
+
+  const { error } = await admin
+    .from('teams')
+    .update({ invite_code: new_code })
+    .eq('id', team_id)
+
+  if (error) return json({ error: error.message }, 500)
+
+  return json({ invite_code: new_code })
+})
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...cors, 'Content-Type': 'application/json' },
+  })
+}
