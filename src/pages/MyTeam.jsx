@@ -5,7 +5,7 @@ import { useTeam } from '../hooks/useTeam'
 
 export default function MyTeam() {
   const { user, loading: authLoading, signOut } = useAuth()
-  const { team, role, loading: teamLoading, createTeam, joinTeam, regenerateInvite, getMembers, manageMember } = useTeam()
+  const { team, role, loading: teamLoading, createTeam, joinTeam, leaveTeam, regenerateInvite, getMembers, manageMember } = useTeam()
   const navigate = useNavigate()
 
   if (authLoading || (user && teamLoading)) {
@@ -49,6 +49,7 @@ export default function MyTeam() {
           team={team}
           role={role}
           currentUserId={user.id}
+          leaveTeam={leaveTeam}
           regenerateInvite={regenerateInvite}
           getMembers={getMembers}
           manageMember={manageMember}
@@ -69,16 +70,33 @@ export default function MyTeam() {
 
 // ── Team card shown when user is already in a team ──────────────────────────
 
-function TeamCard({ team, role, currentUserId, regenerateInvite, getMembers, manageMember }) {
+function TeamCard({ team, role, currentUserId, leaveTeam, regenerateInvite, getMembers, manageMember }) {
   const [copied, setCopied] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
   const [inviteCode, setInviteCode] = useState(team.invite_code)
+  const [leaving, setLeaving] = useState(false)
+  const [leaveError, setLeaveError] = useState(null)
   const isAdmin = role === 'admin'
 
   async function copyCode() {
     await navigator.clipboard.writeText(inviteCode)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function handleLeave() {
+    const msg = isAdmin
+      ? `Leave team ${team.team_number}? If you're the only admin, the longest-standing member will be promoted. You'll need an invite code to rejoin.`
+      : `Leave team ${team.team_number}? You'll need an invite code to rejoin.`
+    if (!confirm(msg)) return
+    setLeaving(true)
+    setLeaveError(null)
+    try {
+      await leaveTeam(team.id)
+    } catch (err) {
+      setLeaveError(err.message)
+      setLeaving(false)
+    }
   }
 
   async function handleRegenerate() {
@@ -156,6 +174,29 @@ function TeamCard({ team, role, currentUserId, regenerateInvite, getMembers, man
         getMembers={getMembers}
         manageMember={manageMember}
       />
+
+      {/* Leave team */}
+      <div style={{ marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
+        {leaveError && (
+          <p style={{ margin: '0 0 10px', fontSize: '13px', color: '#f87171' }}>{leaveError}</p>
+        )}
+        <button
+          onClick={handleLeave}
+          disabled={leaving}
+          style={{
+            width: '100%', height: '44px',
+            background: 'transparent',
+            color: leaving ? 'var(--text-muted)' : '#f87171',
+            border: '1px solid rgba(248,113,113,0.3)',
+            borderRadius: '10px',
+            fontSize: '14px', fontWeight: '600',
+            cursor: leaving ? 'default' : 'pointer',
+            opacity: leaving ? 0.6 : 1,
+          }}
+        >
+          {leaving ? 'Leaving…' : 'Leave team'}
+        </button>
+      </div>
     </div>
   )
 }

@@ -42,7 +42,14 @@ export function useTeam() {
     const { data, error } = await supabase.functions.invoke('join-team', {
       body: { invite_code: inviteCode },
     })
-    if (error) throw new Error(error.message)
+    if (error) {
+      const status = error.context?.status
+      if (status === 404) throw new Error("Oops! That invite code wasn't found — double-check it and try again.")
+      if (status === 409) throw new Error("You're already a member of this team.")
+      if (status === 400) throw new Error('Please enter an invite code.')
+      if (status === 401) throw new Error('You must be signed in to join a team.')
+      throw new Error('Something went wrong — please try again.')
+    }
     if (data?.error) throw new Error(data.error)
     setMembership({ team: data.team, role: 'member' })
     return data.team
@@ -73,6 +80,18 @@ export function useTeam() {
     return data.members
   }
 
+  // Leave the current team. If the caller is the sole admin, the server
+  // auto-promotes the longest-standing member before removing them.
+  async function leaveTeam(teamId) {
+    const { data, error } = await supabase.functions.invoke('leave-team', {
+      body: { team_id: teamId },
+    })
+    if (error) throw new Error(error.message)
+    if (data?.error) throw new Error(data.error)
+    setMembership(null)
+    return data
+  }
+
   // Promote a member to admin or remove them — caller must be an admin.
   async function manageMember(teamId, targetUserId, action) {
     const { data, error } = await supabase.functions.invoke('manage-member', {
@@ -89,6 +108,7 @@ export function useTeam() {
     loading: membership === undefined,
     createTeam,
     joinTeam,
+    leaveTeam,
     regenerateInvite,
     getMembers,
     manageMember,
