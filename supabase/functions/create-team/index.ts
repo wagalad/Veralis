@@ -29,6 +29,21 @@ Deno.serve(async (req) => {
   const { data: { user }, error: authErr } = await admin.auth.getUser(jwt)
   if (authErr || !user) return json({ error: 'Unauthorized' }, 401)
 
+  // Rate limit: enforce a minimum 10-second gap between create attempts per user.
+  // Atomic conditional UPDATE — only succeeds if the cooldown has expired or was never set.
+  const COOLDOWN_MS = 10_000
+  const cutoff = new Date(Date.now() - COOLDOWN_MS).toISOString()
+  const { data: allowed, error: cooldownErr } = await admin
+    .from('profiles')
+    .update({ last_create_attempt: new Date().toISOString() })
+    .eq('id', user.id)
+    .or(`last_create_attempt.is.null,last_create_attempt.lt.${cutoff}`)
+    .select('id')
+    .maybeSingle()
+
+  if (cooldownErr) return json({ error: cooldownErr.message }, 500)
+  if (!allowed) return json({ error: 'Too many attempts. Please wait 10 seconds before trying again.' }, 429)
+
   const { team_number, team_name } = await req.json()
   if (!team_number?.trim()) return json({ error: 'team_number is required' }, 400)
 

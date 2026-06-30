@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
   // This eliminates the TOCTOU race of a separate SELECT + UPDATE.
   const COOLDOWN_MS = 10_000
   const cutoff = new Date(Date.now() - COOLDOWN_MS).toISOString()
-  const { data: allowed } = await admin
+  const { data: allowed, error: cooldownErr } = await admin
     .from('profiles')
     .update({ last_join_attempt: new Date().toISOString() })
     .eq('id', user.id)
@@ -32,6 +32,7 @@ Deno.serve(async (req) => {
     .select('id')
     .maybeSingle()
 
+  if (cooldownErr) return json({ error: cooldownErr.message }, 500)
   if (!allowed) return json({ error: 'Too many attempts. Please wait 10 seconds before trying again.' }, 429)
 
   const { invite_code } = await req.json()

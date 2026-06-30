@@ -89,18 +89,16 @@ export function useScoutingEntries(team) {
 
     if (!online) return localEntry
 
-    // Online: upload photo then insert to Supabase
+    // Online: upload photo then insert to Supabase.
+    // scout-photos is a private bucket, so we store the storage path (not a
+    // public URL — that wouldn't resolve). Display code should turn this into
+    // a viewable image via supabase.storage.from('scout-photos').createSignedUrl(path, ttl).
     let photoUrl = null
     if (photoFile) {
       const { data: upload } = await supabase.storage
         .from('scout-photos')
         .upload(`${team.id}/${localEntry._local_id}`, photoFile, { contentType: photoFile.type })
-      if (upload) {
-        const { data: { publicUrl } } = supabase.storage
-          .from('scout-photos')
-          .getPublicUrl(upload.path)
-        photoUrl = publicUrl
-      }
+      if (upload) photoUrl = upload.path
     }
 
     const { _local_id, ...insertRow } = { ...localEntry, photo_url: photoUrl }
