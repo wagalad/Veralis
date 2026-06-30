@@ -107,6 +107,7 @@ export default function Search() {
           onChange={e => setQuery(e.target.value)}
           placeholder="Team number or name (e.g. 16858A or Waga)"
           autoComplete="off"
+          maxLength={100}
           style={{ ...inputStyle, fontSize: '17px' }}
         />
 

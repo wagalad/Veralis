@@ -115,6 +115,7 @@ export default function Scout() {
               onBlur={confirmTeamEdit}
               onKeyDown={e => e.key === 'Enter' && confirmTeamEdit()}
               placeholder={scoutedTeam}
+              maxLength={12}
               style={{ fontSize: '28px', fontWeight: '800', background: 'transparent', border: 'none', borderBottom: '2px solid var(--accent)', color: 'var(--text)', outline: 'none', width: '120px', letterSpacing: '-0.5px' }}
             />
           ) : (

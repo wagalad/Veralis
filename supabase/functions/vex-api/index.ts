@@ -102,10 +102,12 @@ Deno.serve(async (req) => {
   const { action } = body
   if (!action) return json({ error: 'action is required.' }, 400)
 
+  class InputError extends Error {}
+
   // Validates that a value is a safe positive integer before interpolating into a URL path.
   // Rejects anything with slashes, dots, or other characters that could manipulate the path.
   function requireNumericId(val: string | undefined, name: string): string {
-    if (!val || !/^\d+$/.test(val)) throw new Error(`Invalid ${name}: must be a numeric ID.`)
+    if (!val || !/^\d+$/.test(val)) throw new InputError(`Invalid ${name}: must be a numeric ID.`)
     return val
   }
 
@@ -261,7 +263,7 @@ Deno.serve(async (req) => {
     return json({ error: `Unknown action "${action}".` }, 400)
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
-    return json({ error: message }, 502)
+    return json({ error: message }, err instanceof InputError ? 400 : 502)
   }
 })
 

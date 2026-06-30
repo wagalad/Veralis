@@ -33,6 +33,9 @@ Deno.serve(async (req) => {
   if (!team_number?.trim()) return json({ error: 'team_number is required' }, 400)
 
   const normalized = team_number.trim().toUpperCase()
+  if (normalized.length > 12) return json({ error: 'team_number must be 12 characters or fewer.' }, 400)
+  const trimmedName = team_name?.trim() || null
+  if (trimmedName && trimmedName.length > 100) return json({ error: 'team_name must be 100 characters or fewer.' }, 400)
 
   // Reject if team already exists
   const { data: existing } = await admin
@@ -53,7 +56,7 @@ Deno.serve(async (req) => {
   const invite_code = generateInviteCode()
   const { data: team, error: teamErr } = await admin
     .from('teams')
-    .insert({ team_number: normalized, team_name: team_name?.trim() || null, invite_code })
+    .insert({ team_number: normalized, team_name: trimmedName, invite_code })
     .select()
     .single()
 
