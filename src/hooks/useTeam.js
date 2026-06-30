@@ -75,7 +75,12 @@ export function useTeam() {
     const { data, error } = await supabase.functions.invoke('get-team-members', {
       body: { team_id: teamId },
     })
-    if (error) throw new Error(error.message)
+    if (error) {
+      const status = error.context?.status
+      if (status === 401) throw new Error('You must be signed in to view team members.')
+      if (status === 403) throw new Error("You're not a member of this team.")
+      throw new Error("Couldn't load team members — please try again.")
+    }
     if (data?.error) throw new Error(data.error)
     return data.members
   }
