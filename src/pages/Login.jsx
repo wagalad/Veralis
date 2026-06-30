@@ -58,7 +58,7 @@ export default function Login() {
     }}>
       {/* Logo + App name */}
       <div style={{ marginBottom: '36px', textAlign: 'center' }}>
-        <img src="/logo.png" alt="Veralis" style={{ width: '80px', height: '80px', objectFit: 'contain', marginBottom: '12px' }} />
+        <img src="/logo.png" alt="Veralis" style={{ width: '160px', height: '160px', objectFit: 'contain', marginBottom: '12px' }} />
         <h1 style={{ margin: 0, fontSize: '26px', fontWeight: '800', letterSpacing: '-0.5px' }}>
           {isSignUp ? 'Create account' : 'Sign in'}
         </h1>
