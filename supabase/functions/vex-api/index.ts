@@ -38,18 +38,14 @@ interface VexResponse {
 async function vexGet(path: string, token: string): Promise<VexResponse> {
   const sep = path.includes('?') ? '&' : '?'
   const url = `${VEX_BASE}${path}${sep}per_page=250`
-  console.log('[vex-api] GET', url)
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
   })
   if (!res.ok) {
     const body = await res.text().catch(() => '')
-    console.log('[vex-api] error response:', body)
     throw new Error(`VEX API ${res.status}: ${body || res.statusText}`)
   }
-  const data = await res.json()
-  console.log('[vex-api] response keys:', Object.keys(data), 'data length:', Array.isArray(data.data) ? data.data.length : 'n/a')
-  return data
+  return res.json()
 }
 
 // Transparently handles pagination and caches the flattened result.
@@ -106,6 +102,13 @@ Deno.serve(async (req) => {
   const { action } = body
   if (!action) return json({ error: 'action is required.' }, 400)
 
+  // Validates that a value is a safe positive integer before interpolating into a URL path.
+  // Rejects anything with slashes, dots, or other characters that could manipulate the path.
+  function requireNumericId(val: string | undefined, name: string): string {
+    if (!val || !/^\d+$/.test(val)) throw new Error(`Invalid ${name}: must be a numeric ID.`)
+    return val
+  }
+
   try {
     // ── Team search ────────────────────────────────────────────────────────
     // Resolves a human team number ("16858A") → VEX internal ID + full record.
@@ -132,8 +135,7 @@ Deno.serve(async (req) => {
 
     // ── Event team roster ──────────────────────────────────────────────────
     if (action === 'event_teams') {
-      const { eventId } = body
-      if (!eventId) return json({ error: 'eventId is required.' }, 400)
+      const eventId = requireNumericId(body.eventId, 'eventId')
       const teams = await vexFetchAll(
         `/events/${eventId}/teams`,
         token,
@@ -146,8 +148,8 @@ Deno.serve(async (req) => {
     // ── Event rankings ─────────────────────────────────────────────────────
     // Pass division for multi-division events (e.g. Worlds has many divisions).
     if (action === 'event_rankings') {
-      const { eventId, division } = body
-      if (!eventId) return json({ error: 'eventId is required.' }, 400)
+      const eventId  = requireNumericId(body.eventId, 'eventId')
+      const division = body.division ? requireNumericId(body.division, 'division') : null
       const path = division
         ? `/events/${eventId}/divisions/${division}/rankings`
         : `/events/${eventId}/rankings`
@@ -162,8 +164,7 @@ Deno.serve(async (req) => {
 
     // ── Event skills leaderboard ───────────────────────────────────────────
     if (action === 'event_skills') {
-      const { eventId } = body
-      if (!eventId) return json({ error: 'eventId is required.' }, 400)
+      const eventId = requireNumericId(body.eventId, 'eventId')
       const skills = await vexFetchAll(
         `/events/${eventId}/skills`,
         token,
@@ -201,8 +202,7 @@ Deno.serve(async (req) => {
 
     // ── Team stats (skills + awards) by VEX internal id ───────────────────
     if (action === 'team_stats') {
-      const { teamId } = body
-      if (!teamId) return json({ error: 'teamId is required.' }, 400)
+      const teamId   = requireNumericId(body.teamId, 'teamId')
       const cacheKey = `team_stats:${teamId}`
 
       const cached = cacheGet<unknown>(cacheKey)
@@ -246,9 +246,8 @@ Deno.serve(async (req) => {
 
     // ── Team match schedule at a specific event ────────────────────────────
     if (action === 'team_matches') {
-      const { teamId, eventId } = body
-      if (!teamId) return json({ error: 'teamId is required.' }, 400)
-      if (!eventId) return json({ error: 'eventId is required.' }, 400)
+      const teamId  = requireNumericId(body.teamId, 'teamId')
+      const eventId = requireNumericId(body.eventId, 'eventId')
 
       const matches = await vexFetchAll(
         `/teams/${teamId}/matches?event_id=${eventId}`,

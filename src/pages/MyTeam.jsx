@@ -457,6 +457,7 @@ function TeamSetup({ createTeam, joinTeam }) {
             onChange={e => setInviteCode(e.target.value.toUpperCase())}
             placeholder="Invite code (e.g. A3K9BM2P)"
             required
+            maxLength={8}
             autoComplete="off"
             style={{ ...inputStyle, fontFamily: 'monospace', letterSpacing: '0.1em', fontSize: '18px' }}
           />
@@ -467,12 +468,14 @@ function TeamSetup({ createTeam, joinTeam }) {
               onChange={e => setTeamNumber(e.target.value.toUpperCase())}
               placeholder="VEX team number (e.g. 16858A)"
               required
+              maxLength={12}
               style={inputStyle}
             />
             <input
               value={teamName}
               onChange={e => setTeamName(e.target.value)}
               placeholder="Team name (optional)"
+              maxLength={100}
               style={inputStyle}
             />
           </>

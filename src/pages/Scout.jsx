@@ -193,6 +193,7 @@ export default function Scout() {
           <Field label="One-word note" optional>
             <input type="text" value={form.note} onChange={e => setField('note', e.target.value)}
               placeholder="e.g. consistent, fragile, speedy…"
+              maxLength={200}
               style={{ width: '100%', background: 'var(--surface-2)', border: '1.5px solid var(--border)', borderRadius: '10px', color: 'var(--text)', fontSize: '15px', padding: '0 14px', height: '52px', fontFamily: 'inherit', outline: 'none' }}
             />
           </Field>

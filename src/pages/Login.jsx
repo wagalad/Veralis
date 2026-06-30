@@ -112,7 +112,7 @@ export default function Login() {
             placeholder="Password"
             required
             autoComplete={isSignUp ? 'new-password' : 'current-password'}
-            minLength={isSignUp ? 6 : undefined}
+            minLength={isSignUp ? 8 : undefined}
             style={inputStyle}
           />
 
