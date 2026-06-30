@@ -56,11 +56,9 @@ export default function Login() {
       justifyContent: 'center',
       padding: '32px 20px',
     }}>
-      {/* App name */}
+      {/* Logo + App name */}
       <div style={{ marginBottom: '36px', textAlign: 'center' }}>
-        <p style={{ margin: '0 0 4px', fontSize: '12px', fontWeight: '600', letterSpacing: '0.1em', color: 'var(--accent)', textTransform: 'uppercase' }}>
-          Veralis
-        </p>
+        <img src="/logo.png" alt="Veralis" style={{ width: '80px', height: '80px', objectFit: 'contain', marginBottom: '12px' }} />
         <h1 style={{ margin: 0, fontSize: '26px', fontWeight: '800', letterSpacing: '-0.5px' }}>
           {isSignUp ? 'Create account' : 'Sign in'}
         </h1>
