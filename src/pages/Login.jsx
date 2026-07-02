@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 export default function Login() {
@@ -153,6 +153,13 @@ export default function Login() {
         >
           {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
         </button>
+
+        <p style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.5 }}>
+          By continuing you agree to our{' '}
+          <Link to="/terms" style={{ color: 'var(--text-muted)', textDecoration: 'underline' }}>Terms</Link>
+          {' '}and{' '}
+          <Link to="/privacy" style={{ color: 'var(--text-muted)', textDecoration: 'underline' }}>Privacy Policy</Link>.
+        </p>
       </div>
     </div>
   )

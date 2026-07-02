@@ -6,6 +6,8 @@ import Search from './pages/Search'
 import Scout from './pages/Scout'
 import MyTeam from './pages/MyTeam'
 import Login from './pages/Login'
+import Privacy from './pages/Privacy'
+import Terms from './pages/Terms'
 
 export default function App() {
   return (
@@ -15,20 +17,25 @@ export default function App() {
   )
 }
 
+// Pages shown without the bottom nav (full-height, scrollable on their own).
+const CHROMELESS = ['/login', '/privacy', '/terms']
+
 function Shell() {
   const { pathname } = useLocation()
-  const isAuthPage = pathname === '/login'
+  const chromeless = CHROMELESS.includes(pathname)
 
   return (
     <div className="app-shell">
-      {!isAuthPage && <BottomNav />}
-      <main className={isAuthPage ? undefined : 'app-main'} style={isAuthPage ? { flex: 1, overflowY: 'auto' } : undefined}>
+      {!chromeless && <BottomNav />}
+      <main className={chromeless ? undefined : 'app-main'} style={chromeless ? { flex: 1, overflowY: 'auto' } : undefined}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/search" element={<Search />} />
           <Route path="/scout" element={<Scout />} />
           <Route path="/my-team" element={<MyTeam />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
