@@ -5,6 +5,18 @@ const cors = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+function aalOf(jwt: string): string {
+  try { return JSON.parse(atob(jwt.split('.')[1])).aal ?? 'aal1' } catch { return 'aal1' }
+}
+
+// Blocks a request when the user has 2FA enabled but the session is only AAL1
+// (password) — enforces 2FA on this action even against direct API calls.
+async function mfaBlocked(admin: any, jwt: string, userId: string): Promise<boolean> {
+  if (aalOf(jwt) === 'aal2') return false
+  const { data } = await admin.auth.admin.mfa.listFactors({ userId })
+  return (data?.factors ?? []).some((f: { status: string }) => f.status === 'verified')
+}
+
 function generateInviteCode(): string {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
   const bytes = crypto.getRandomValues(new Uint8Array(8))
@@ -24,6 +36,10 @@ Deno.serve(async (req) => {
 
   const { data: { user }, error: authErr } = await admin.auth.getUser(jwt)
   if (authErr || !user) return json({ error: 'Unauthorized' }, 401)
+
+  if (await mfaBlocked(admin, jwt, user.id)) {
+    return json({ error: 'Two-factor verification is required for this action.' }, 403)
+  }
 
   const { team_id } = await req.json()
   if (!team_id) return json({ error: 'team_id is required' }, 400)
