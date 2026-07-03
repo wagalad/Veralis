@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { AuthProvider } from './contexts/AuthContext'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import BottomNav from './components/BottomNav'
+import MfaChallenge from './components/MfaChallenge'
 import Home from './pages/Home'
 import Search from './pages/Search'
 import Scout from './pages/Scout'
@@ -22,7 +23,20 @@ const CHROMELESS = ['/login', '/privacy', '/terms']
 
 function Shell() {
   const { pathname } = useLocation()
+  const { user, mfaRequired } = useAuth()
   const chromeless = CHROMELESS.includes(pathname)
+
+  // A signed-in user with 2FA enabled must pass the code challenge before
+  // anything else in the app is reachable.
+  if (user && mfaRequired) {
+    return (
+      <div className="app-shell">
+        <main style={{ flex: 1, overflowY: 'auto' }}>
+          <MfaChallenge />
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="app-shell">

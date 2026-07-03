@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTeam } from '../hooks/useTeam'
+import MfaSetup from '../components/MfaSetup'
 
 export default function MyTeam() {
   const { user, loading: authLoading, signOut } = useAuth()
@@ -41,6 +42,11 @@ export default function MyTeam() {
       <div style={{ ...card, marginBottom: '12px' }}>
         <p style={{ ...label, marginBottom: '4px' }}>Signed in as</p>
         <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', wordBreak: 'break-all' }}>{user.email}</p>
+      </div>
+
+      {/* Security — two-factor authentication */}
+      <div style={{ ...card, marginBottom: '12px' }}>
+        <MfaSetup />
       </div>
 
       {/* Team */}
