@@ -10,10 +10,12 @@
 --    One row per user. Created automatically on sign-up via trigger.
 -- ============================================================
 create table public.profiles (
-  id                 uuid references auth.users(id) on delete cascade primary key,
-  display_name       text check (display_name is null or char_length(display_name) <= 100),
-  last_join_attempt  timestamptz,
-  updated_at         timestamptz default now()
+  id                    uuid references auth.users(id) on delete cascade primary key,
+  display_name          text check (display_name is null or char_length(display_name) <= 100),
+  last_join_attempt     timestamptz,
+  last_create_attempt   timestamptz,
+  last_recovery_attempt timestamptz,
+  updated_at            timestamptz default now()
 );
 
 alter table public.profiles enable row level security;
@@ -169,3 +171,22 @@ create policy "scouting_entries: team members can update"
 create index scouting_entries_team_id_idx     on public.scouting_entries(team_id);
 create index scouting_entries_created_by_idx  on public.scouting_entries(created_by);
 create index scouting_entries_created_at_idx  on public.scouting_entries(created_at desc);
+
+
+-- ============================================================
+-- 5. MFA_RECOVERY_CODES
+--    One-time backup codes for 2FA (stored only as SHA-256 hashes).
+--    All access via the mfa-recovery Edge Function (service role) — no client policies.
+-- ============================================================
+create table public.mfa_recovery_codes (
+  id          uuid default gen_random_uuid() primary key,
+  user_id     uuid references auth.users(id) on delete cascade not null,
+  code_hash   text not null,
+  used_at     timestamptz,
+  created_at  timestamptz default now()
+);
+
+create index mfa_recovery_codes_user_idx on public.mfa_recovery_codes(user_id);
+
+alter table public.mfa_recovery_codes enable row level security;
+-- No policies: only the service role (Edge Function) may read/write.

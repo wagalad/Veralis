@@ -48,3 +48,33 @@ export async function disableMfa(factorId) {
   const { error } = await supabase.auth.mfa.unenroll({ factorId })
   if (error) throw new Error(error.message)
 }
+
+// Generate a fresh set of one-time recovery codes (invalidates any previous set).
+// Requires an AAL2 session — enforced server-side. Returns plaintext codes ONCE.
+export async function generateRecoveryCodes() {
+  const { data, error } = await supabase.functions.invoke('mfa-recovery', {
+    body: { action: 'generate' },
+  })
+  if (error) {
+    if (error.context?.status === 403) throw new Error('Please finish verifying your 2FA before generating codes.')
+    throw new Error('Could not generate recovery codes. Please try again.')
+  }
+  if (data?.error) throw new Error(data.error)
+  return data.codes
+}
+
+// Consume a recovery code: removes the lost authenticator so the user can get
+// back in (2FA ends up OFF, ready to re-enroll).
+export async function consumeRecoveryCode(code) {
+  const { data, error } = await supabase.functions.invoke('mfa-recovery', {
+    body: { action: 'consume', code },
+  })
+  if (error) {
+    const status = error.context?.status
+    if (status === 400) throw new Error('That recovery code is invalid or has already been used.')
+    if (status === 429) throw new Error('Too many attempts. Please wait a few seconds and try again.')
+    throw new Error('Something went wrong. Please try again.')
+  }
+  if (data?.error) throw new Error(data.error)
+  return data
+}

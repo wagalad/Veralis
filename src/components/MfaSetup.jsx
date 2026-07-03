@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
-import { listFactors, startEnroll, verifyCode, disableMfa } from '../hooks/useMfa'
+import { listFactors, startEnroll, verifyCode, disableMfa, generateRecoveryCodes } from '../hooks/useMfa'
 
-// Account-settings widget (rendered in My Team) to turn 2FA on or off.
+// Account-settings widget (rendered in My Team) to turn 2FA on or off and
+// manage recovery codes.
 export default function MfaSetup() {
   const [factors, setFactors] = useState(null) // null = loading
   const [enroll, setEnroll] = useState(null)    // { factorId, qrSvg, secret } while enrolling
+  const [recoveryCodes, setRecoveryCodes] = useState(null) // string[] to display once
   const [code, setCode] = useState('')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -19,8 +21,7 @@ export default function MfaSetup() {
   const verified = factors?.find(f => f.status === 'verified')
 
   async function begin() {
-    setError(null)
-    setBusy(true)
+    setError(null); setBusy(true)
     try { setEnroll(await startEnroll()) }
     catch (err) { setError(err.message) }
     finally { setBusy(false) }
@@ -28,24 +29,35 @@ export default function MfaSetup() {
 
   async function confirm(e) {
     e.preventDefault()
-    setError(null)
-    setBusy(true)
+    setError(null); setBusy(true)
     try {
       await verifyCode(enroll.factorId, code.trim())
       setEnroll(null)
       setCode('')
+      // Session is now AAL2 — immediately mint recovery codes to show once.
+      const codes = await generateRecoveryCodes()
+      setRecoveryCodes(codes)
       await load()
-    } catch {
-      setError("That code didn't match. Check your app and try again.")
+    } catch (err) {
+      setError(err.message?.includes('match') || err.message?.includes('nvalid')
+        ? "That code didn't match. Check your app and try again."
+        : err.message)
     } finally {
       setBusy(false)
     }
   }
 
+  async function regenerate() {
+    if (!confirm('Generate new recovery codes? Your old codes will stop working.')) return
+    setError(null); setBusy(true)
+    try { setRecoveryCodes(await generateRecoveryCodes()) }
+    catch (err) { setError(err.message) }
+    finally { setBusy(false) }
+  }
+
   async function turnOff() {
     if (!confirm('Turn off two-factor authentication? Your account will be protected by password only.')) return
-    setError(null)
-    setBusy(true)
+    setError(null); setBusy(true)
     try { await disableMfa(verified.id); await load() }
     catch (err) { setError(err.message) }
     finally { setBusy(false) }
@@ -57,8 +69,9 @@ export default function MfaSetup() {
 
       {factors === null ? (
         <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--text-muted)' }}>Loading…</p>
+      ) : recoveryCodes ? (
+        <RecoveryCodes codes={recoveryCodes} onDone={() => setRecoveryCodes(null)} />
       ) : enroll ? (
-        // ── Enrollment: scan QR + confirm a code ──
         <form onSubmit={confirm} style={{ marginTop: '10px' }}>
           <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
             Scan this with an authenticator app (Google Authenticator, Authy, 1Password), then enter the 6-digit code it shows.
@@ -88,16 +101,19 @@ export default function MfaSetup() {
           </div>
         </form>
       ) : verified ? (
-        // ── Already on ──
         <div style={{ marginTop: '8px' }}>
           <p style={{ margin: '0 0 12px', fontSize: '14px', color: '#4ade80', fontWeight: 600 }}>● On — a code is required at sign-in.</p>
           {error && <p style={errorStyle}>{error}</p>}
-          <button onClick={turnOff} disabled={busy} style={{ ...dangerBtn, opacity: busy ? 0.6 : 1 }}>
-            {busy ? 'Working…' : 'Turn off 2FA'}
-          </button>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            <button onClick={regenerate} disabled={busy} style={{ ...secondaryBtn, opacity: busy ? 0.6 : 1 }}>
+              Regenerate recovery codes
+            </button>
+            <button onClick={turnOff} disabled={busy} style={{ ...dangerBtn, opacity: busy ? 0.6 : 1 }}>
+              Turn off 2FA
+            </button>
+          </div>
         </div>
       ) : (
-        // ── Off ──
         <div style={{ marginTop: '8px' }}>
           <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
             Add a second step at sign-in with an authenticator app for stronger account security.
@@ -108,6 +124,46 @@ export default function MfaSetup() {
           </button>
         </div>
       )}
+    </div>
+  )
+}
+
+// One-time display of recovery codes with copy / download and an acknowledgement.
+function RecoveryCodes({ codes, onDone }) {
+  const [copied, setCopied] = useState(false)
+  const text = codes.join('\n')
+
+  function copy() {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+  function download() {
+    const url = URL.createObjectURL(new Blob([`Veralis recovery codes\n\n${text}\n`], { type: 'text/plain' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'veralis-recovery-codes.txt'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div style={{ marginTop: '10px' }}>
+      <p style={{ margin: '0 0 6px', fontSize: '14px', fontWeight: 700, color: 'var(--text)' }}>Save your recovery codes</p>
+      <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+        Each code works once. If you lose your authenticator, a code lets you sign in and reset 2FA.
+        Store them somewhere safe — <strong>you won't see them again.</strong>
+      </p>
+      <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontFamily: 'monospace', fontSize: '14px', letterSpacing: '0.04em' }}>
+        {codes.map(c => <span key={c}>{c}</span>)}
+      </div>
+      <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+        <button onClick={copy} style={secondaryBtn}>{copied ? 'Copied!' : 'Copy'}</button>
+        <button onClick={download} style={secondaryBtn}>Download</button>
+      </div>
+      <button onClick={onDone} style={{ ...primaryBtn, width: '100%', marginTop: '10px' }}>
+        I've saved my codes
+      </button>
     </div>
   )
 }
