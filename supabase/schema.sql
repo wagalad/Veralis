@@ -56,6 +56,27 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
+-- MFA enforcement helper: true if the session satisfies the user's 2FA
+-- requirement. Users with a verified TOTP factor must be at AAL2; users without
+-- 2FA are always allowed (they can't reach AAL2). Used in the RLS policies below.
+create or replace function public.mfa_satisfied()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    coalesce(auth.jwt() ->> 'aal', 'aal1') = 'aal2'
+    or not exists (
+      select 1 from auth.mfa_factors f
+      where f.user_id = auth.uid()
+        and f.status = 'verified'
+    );
+$$;
+
+grant execute on function public.mfa_satisfied() to authenticated, anon;
+
 
 -- ============================================================
 -- 2. TEAMS
@@ -77,7 +98,8 @@ alter table public.teams enable row level security;
 create policy "teams: members can read own teams"
   on public.teams for select
   using (
-    exists (
+    public.mfa_satisfied()
+    and exists (
       select 1 from public.team_memberships
       where team_memberships.team_id = teams.id
         and team_memberships.user_id = auth.uid()
@@ -106,7 +128,7 @@ alter table public.team_memberships enable row level security;
 -- A user can only see their own membership rows.
 create policy "team_memberships: read own"
   on public.team_memberships for select
-  using (auth.uid() = user_id);
+  using (public.mfa_satisfied() and auth.uid() = user_id);
 
 -- No INSERT/UPDATE/DELETE policies — all writes go through Edge Functions.
 
@@ -140,7 +162,8 @@ alter table public.scouting_entries enable row level security;
 create policy "scouting_entries: team members can read"
   on public.scouting_entries for select
   using (
-    exists (
+    public.mfa_satisfied()
+    and exists (
       select 1 from public.team_memberships
       where team_memberships.team_id = scouting_entries.team_id
         and team_memberships.user_id = auth.uid()
@@ -150,7 +173,8 @@ create policy "scouting_entries: team members can read"
 create policy "scouting_entries: team members can insert"
   on public.scouting_entries for insert
   with check (
-    auth.uid() = created_by
+    public.mfa_satisfied()
+    and auth.uid() = created_by
     and exists (
       select 1 from public.team_memberships
       where team_memberships.team_id = scouting_entries.team_id
@@ -161,7 +185,8 @@ create policy "scouting_entries: team members can insert"
 create policy "scouting_entries: team members can update"
   on public.scouting_entries for update
   using (
-    exists (
+    public.mfa_satisfied()
+    and exists (
       select 1 from public.team_memberships
       where team_memberships.team_id = scouting_entries.team_id
         and team_memberships.user_id = auth.uid()
