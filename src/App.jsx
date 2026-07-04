@@ -6,6 +6,7 @@ import Home from './pages/Home'
 import Search from './pages/Search'
 import Scout from './pages/Scout'
 import MyTeam from './pages/MyTeam'
+import Settings from './pages/Settings'
 import Login from './pages/Login'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
@@ -47,6 +48,7 @@ function Shell() {
           <Route path="/search" element={<Search />} />
           <Route path="/scout" element={<Scout />} />
           <Route path="/my-team" element={<MyTeam />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/login" element={<Login />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />

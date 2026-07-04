@@ -2,10 +2,9 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTeam } from '../hooks/useTeam'
-import MfaSetup from '../components/MfaSetup'
 
 export default function MyTeam() {
-  const { user, loading: authLoading, signOut } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const { team, role, loading: teamLoading, createTeam, joinTeam, leaveTeam, regenerateInvite, getMembers, manageMember } = useTeam()
   const navigate = useNavigate()
 
@@ -44,11 +43,6 @@ export default function MyTeam() {
         <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', wordBreak: 'break-all' }}>{user.email}</p>
       </div>
 
-      {/* Security — two-factor authentication */}
-      <div style={{ ...card, marginBottom: '12px' }}>
-        <MfaSetup />
-      </div>
-
       {/* Team */}
       {team ? (
         <TeamCard
@@ -64,12 +58,6 @@ export default function MyTeam() {
         <TeamSetup createTeam={createTeam} joinTeam={joinTeam} />
       )}
 
-      <button
-        onClick={async () => { await signOut(); navigate('/login') }}
-        style={{ ...btnSecondary, width: '100%', marginTop: '8px' }}
-      >
-        Sign out
-      </button>
     </div>
   )
 }
