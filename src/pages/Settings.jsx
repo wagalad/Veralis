@@ -2,23 +2,14 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import MfaSetup from '../components/MfaSetup'
-
-function getTheme() {
-  return localStorage.getItem('veralis-theme') === 'light' ? 'light' : 'dark'
-}
-
-function applyTheme(t) {
-  if (t === 'light') document.documentElement.setAttribute('data-theme', 'light')
-  else document.documentElement.removeAttribute('data-theme')
-  localStorage.setItem('veralis-theme', t)
-}
+import { getStoredTheme, setTheme } from '../lib/theme'
 
 export default function Settings() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
-  const [theme, setTheme] = useState(getTheme)
+  const [theme, setThemeState] = useState(getStoredTheme)
 
-  function chooseTheme(t) { applyTheme(t); setTheme(t) }
+  function chooseTheme(pref) { setTheme(pref); setThemeState(pref) }
 
   return (
     <div style={{ padding: '24px 16px', maxWidth: '560px', margin: '0 auto' }}>
@@ -35,7 +26,7 @@ export default function Settings() {
       <div style={{ ...card, marginBottom: '12px' }}>
         <p style={{ ...label, marginBottom: '12px' }}>Appearance</p>
         <div style={{ display: 'flex', gap: '8px' }}>
-          {['dark', 'light'].map(t => {
+          {['system', 'light', 'dark'].map(t => {
             const active = theme === t
             return (
               <button
@@ -49,7 +40,7 @@ export default function Settings() {
                   border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
                 }}
               >
-                {t} mode
+                {t}
               </button>
             )
           })}
