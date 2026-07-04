@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     .update({ invite_code: new_code })
     .eq('id', team_id)
 
-  if (error) return json({ error: error.message }, 500)
+  if (error) return json({ error: 'Something went wrong. Please try again.' }, 500)
 
   return json({ invite_code: new_code })
 })

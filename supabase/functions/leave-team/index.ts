@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
           .eq('user_id', nextMember.user_id)
           .eq('team_id', team_id)
 
-        if (promoteErr) return json({ error: promoteErr.message }, 500)
+        if (promoteErr) return json({ error: 'Something went wrong. Please try again.' }, 500)
         promoted = true
       }
       // If no other members at all, leave proceeds normally (team becomes empty)
@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
     .eq('user_id', user.id)
     .eq('team_id', team_id)
 
-  if (deleteErr) return json({ error: deleteErr.message }, 500)
+  if (deleteErr) return json({ error: 'Something went wrong. Please try again.' }, 500)
 
   return json({ success: true, promoted })
 })

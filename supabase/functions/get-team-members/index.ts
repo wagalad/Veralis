@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
     .eq('team_id', team_id)
     .order('role')
 
-  if (memberErr) return json({ error: memberErr.message }, 500)
+  if (memberErr) return json({ error: 'Something went wrong. Please try again.' }, 500)
 
   // Enrich each member with their email from auth.admin
   const members = await Promise.all(

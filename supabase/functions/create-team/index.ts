@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     .select('id')
     .maybeSingle()
 
-  if (cooldownErr) return json({ error: cooldownErr.message }, 500)
+  if (cooldownErr) return json({ error: 'Something went wrong. Please try again.' }, 500)
   if (!allowed) return json({ error: 'Too many attempts. Please wait 10 seconds before trying again.' }, 429)
 
   const { team_number, team_name } = await req.json()
@@ -91,14 +91,14 @@ Deno.serve(async (req) => {
     .select()
     .single()
 
-  if (teamErr) return json({ error: teamErr.message }, 500)
+  if (teamErr) return json({ error: 'Something went wrong. Please try again.' }, 500)
 
   // Make creator an admin member
   const { error: memberErr } = await admin
     .from('team_memberships')
     .insert({ user_id: user.id, team_id: team.id, role: 'admin' })
 
-  if (memberErr) return json({ error: memberErr.message }, 500)
+  if (memberErr) return json({ error: 'Something went wrong. Please try again.' }, 500)
 
   return json({ team })
 })

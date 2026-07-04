@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
       codes.map(async (c) => ({ user_id: user.id, code_hash: await sha256(normalize(c)) })),
     )
     const { error } = await admin.from('mfa_recovery_codes').insert(rows)
-    if (error) return json({ error: error.message }, 500)
+    if (error) return json({ error: 'Something went wrong. Please try again.' }, 500)
 
     // Plaintext returned exactly once — never stored or retrievable again.
     return json({ codes })

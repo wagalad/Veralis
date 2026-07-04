@@ -86,9 +86,11 @@ Deno.serve(async (req) => {
   const jwt = req.headers.get('Authorization')?.replace('Bearer ', '')
   if (!jwt) return json({ error: 'Unauthorized' }, 401)
 
+  // Anon key is sufficient — this function only validates the caller's token and
+  // proxies public VEX data; it never touches app tables, so no service role needed.
   const supa = createClient(
     Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    Deno.env.get('SUPABASE_ANON_KEY')!,
   )
   const { data: { user }, error: authErr } = await supa.auth.getUser(jwt)
   if (authErr || !user) return json({ error: 'Unauthorized' }, 401)
@@ -262,8 +264,11 @@ Deno.serve(async (req) => {
 
     return json({ error: `Unknown action "${action}".` }, 400)
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err)
-    return json({ error: message }, err instanceof InputError ? 400 : 502)
+    // InputError messages are safe validation text; anything else may carry
+    // upstream/internal detail, so log it server-side and return a generic message.
+    if (err instanceof InputError) return json({ error: err.message }, 400)
+    console.error('vex-api error:', err)
+    return json({ error: 'Upstream data service error. Please try again.' }, 502)
   }
 })
 

@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
       .update({ role: 'admin' })
       .eq('user_id', target_user_id)
       .eq('team_id', team_id)
-    if (error) return json({ error: error.message }, 500)
+    if (error) return json({ error: 'Something went wrong. Please try again.' }, 500)
     return json({ success: true })
   }
 
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
     .eq('user_id', target_user_id)
     .eq('team_id', team_id)
 
-  if (error) return json({ error: error.message }, 500)
+  if (error) return json({ error: 'Something went wrong. Please try again.' }, 500)
   return json({ success: true })
 })
 

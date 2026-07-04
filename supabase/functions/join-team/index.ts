@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     .select('id')
     .maybeSingle()
 
-  if (cooldownErr) return json({ error: cooldownErr.message }, 500)
+  if (cooldownErr) return json({ error: 'Something went wrong. Please try again.' }, 500)
   if (!allowed) return json({ error: 'Too many attempts. Please wait 10 seconds before trying again.' }, 429)
 
   const { invite_code } = await req.json()
@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
     .from('team_memberships')
     .insert({ user_id: user.id, team_id: team.id, role: 'member' })
 
-  if (memberErr) return json({ error: memberErr.message }, 500)
+  if (memberErr) return json({ error: 'Something went wrong. Please try again.' }, 500)
 
   // Return team info without the invite code (member doesn't need it yet)
   return json({ team: { id: team.id, team_number: team.team_number, team_name: team.team_name } })
