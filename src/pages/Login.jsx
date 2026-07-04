@@ -1,6 +1,13 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { supabase } from '../lib/supabase'
+
+// Public hCaptcha site key (safe to ship). The real key is domain-locked to
+// veralis.app in production; hCaptcha's universal test key is used in dev.
+const HCAPTCHA_SITEKEY = import.meta.env.PROD
+  ? '4462ebd8-ea3e-44e0-b1ae-c544f670fe08'
+  : '10000000-ffff-ffff-ffff-000000000001'
 
 export default function Login() {
   const [mode, setMode] = useState('signin')
@@ -10,6 +17,8 @@ export default function Login() {
   const [success, setSuccess] = useState(null)
   const [loading, setLoading] = useState(false)
   const [oauthLoading, setOauthLoading] = useState(null)
+  const [captchaToken, setCaptchaToken] = useState(null)
+  const captchaRef = useRef(null)
   const navigate = useNavigate()
 
   async function handleOAuth(provider) {
@@ -29,23 +38,28 @@ export default function Login() {
     setSuccess(null)
     setLoading(true)
     try {
+      const options = { captchaToken }
       if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({ email, password })
+        const { error } = await supabase.auth.signUp({ email, password, options })
         if (error) throw error
         setSuccess('Check your email to confirm your account, then sign in.')
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        const { error } = await supabase.auth.signInWithPassword({ email, password, options })
         if (error) throw error
         navigate('/my-team')
       }
     } catch (err) {
       setError(err.message)
     } finally {
+      // hCaptcha tokens are single-use — reset so a retry gets a fresh one.
+      captchaRef.current?.resetCaptcha()
+      setCaptchaToken(null)
       setLoading(false)
     }
   }
 
   const isSignUp = mode === 'signup'
+  const submitDisabled = loading || !captchaToken
 
   return (
     <div style={{
@@ -127,18 +141,29 @@ export default function Login() {
             </p>
           )}
 
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <HCaptcha
+              ref={captchaRef}
+              sitekey={HCAPTCHA_SITEKEY}
+              theme="dark"
+              onVerify={setCaptchaToken}
+              onExpire={() => setCaptchaToken(null)}
+              onError={() => setCaptchaToken(null)}
+            />
+          </div>
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={submitDisabled}
             style={{
               height: '54px',
-              background: loading ? 'var(--surface-2)' : 'var(--accent)',
-              color: loading ? 'var(--text-muted)' : '#fff',
+              background: submitDisabled ? 'var(--surface-2)' : 'var(--accent)',
+              color: submitDisabled ? 'var(--text-muted)' : '#fff',
               border: 'none',
               borderRadius: '12px',
               fontSize: '16px',
               fontWeight: '700',
-              cursor: loading ? 'default' : 'pointer',
+              cursor: submitDisabled ? 'default' : 'pointer',
               marginTop: '2px',
               transition: 'background 0.15s',
             }}
