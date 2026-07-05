@@ -242,7 +242,11 @@ Deno.serve(async (req) => {
       if (cached) return json({ events: cached })
 
       const result = await vexGet(`/events?name=${encodeURIComponent(q)}`, token)
-      const events = Array.isArray(result.data) ? result.data.slice(0, 20) : []
+      // The VEX API returns events oldest-first, so slicing raw data would only
+      // ever surface events from ~2013. Sort most-recent-first before truncating.
+      const all = Array.isArray(result.data) ? [...result.data] as { start?: string }[] : []
+      all.sort((a, b) => String(b.start ?? '').localeCompare(String(a.start ?? '')))
+      const events = all.slice(0, 20)
 
       cacheSet(cacheKey, events, 60)
       return json({ events })
