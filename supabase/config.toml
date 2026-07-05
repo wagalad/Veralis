@@ -1,0 +1,43 @@
+# Minimal Supabase config — enables Docker-free (API-based) function deploys by
+# giving the CLI an explicit entrypoint for each Edge Function.
+project_id = "ichaxllbtawgwocprvhn"
+
+[functions.vex-api]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/vex-api/index.ts"
+
+[functions.create-team]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/create-team/index.ts"
+
+[functions.join-team]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/join-team/index.ts"
+
+[functions.leave-team]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/leave-team/index.ts"
+
+[functions.manage-member]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/manage-member/index.ts"
+
+[functions.regenerate-invite]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/regenerate-invite/index.ts"
+
+[functions.get-team-members]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/get-team-members/index.ts"
+
+[functions.mfa-recovery]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/mfa-recovery/index.ts"

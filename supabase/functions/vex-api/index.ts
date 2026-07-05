@@ -231,24 +231,21 @@ Deno.serve(async (req) => {
       return json({ stats })
     }
 
-    // ── Search events by name ─────────────────────────────────────────────
-    if (action === 'search_events') {
-      const { query } = body
-      if (!query?.trim()) return json({ error: 'query is required.' }, 400)
-      const q = query.trim()
-      const cacheKey = `search_events:${q.toLowerCase()}`
-
-      const cached = cacheGet<unknown[]>(cacheKey)
-      if (cached) return json({ events: cached })
-
-      const result = await vexGet(`/events?name=${encodeURIComponent(q)}`, token)
-      // The VEX API returns events oldest-first, so slicing raw data would only
-      // ever surface events from ~2013. Sort most-recent-first before truncating.
-      const all = Array.isArray(result.data) ? [...result.data] as { start?: string }[] : []
-      all.sort((a, b) => String(b.start ?? '').localeCompare(String(a.start ?? '')))
-      const events = all.slice(0, 20)
-
-      cacheSet(cacheKey, events, 60)
+    // ── Events a team is registered for ───────────────────────────────────
+    // The VEX API has NO event name-search parameter, so Live Event Mode lists
+    // the team's own events (that's where the team actually has matches anyway).
+    // Returned most-recent-first; the client filters to upcoming/current.
+    if (action === 'team_events') {
+      const teamId = requireNumericId(body.teamId, 'teamId')
+      const raw = await vexFetchAll(
+        `/teams/${teamId}/events`,
+        token,
+        `team_events:${teamId}`,
+        300, // 5 min — a team's registration list is stable
+      ) as { start?: string }[]
+      const events = [...raw].sort(
+        (a, b) => String(b.start ?? '').localeCompare(String(a.start ?? '')),
+      )
       return json({ events })
     }
 

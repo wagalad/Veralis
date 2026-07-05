@@ -91,13 +91,15 @@ export async function getEventSkills(eventId) {
 }
 
 /**
- * Search for events by name or location.
- * Returns up to 20 results.
+ * Fetch the events a team is registered for, most-recent first.
  *
- * @param {string} query - event name or city
+ * The VEX API has no event name-search endpoint, so Live Event Mode lists a
+ * team's own events (which is where the team actually has matches).
+ *
+ * @param {string|number} teamId - VEX API internal numeric team id
  */
-export async function searchEvents(query) {
-  const { events } = await proxy('search_events', { query })
+export async function getTeamEvents(teamId) {
+  const { events } = await proxy('team_events', { teamId: String(teamId) })
   return events
 }
 

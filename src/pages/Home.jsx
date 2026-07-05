@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTeam } from '../hooks/useTeam'
 import { useScoutingEntries } from '../hooks/useScoutingEntries'
 import { useEvent } from '../hooks/useEvent'
-import { searchEvents, getTeam, getTeamStats } from '../lib/vexApi'
+import { getTeamEvents, getTeam, getTeamStats } from '../lib/vexApi'
 
 export default function Home() {
   const { user } = useAuth()
@@ -43,73 +43,52 @@ export default function Home() {
 // ── Event picker ──────────────────────────────────────────────────────────────
 
 function EventPicker({ teamNumber, onSelect }) {
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState([])
-  const [searching, setSearching] = useState(false)
-  const [searched, setSearched] = useState(false)
+  const [events, setEvents] = useState([])
+  const [status, setStatus] = useState('loading') // loading | ready | error | notfound
   const [upcomingOnly, setUpcomingOnly] = useState(true)
 
-  async function handleSearch(e) {
-    e.preventDefault()
-    if (!query.trim()) return
-    setSearching(true)
-    try {
-      const events = await searchEvents(query.trim())
-      setResults(Array.isArray(events) ? events : [])
-    } catch {
-      setResults([])
-    } finally {
-      setSearched(true)
-      setSearching(false)
-    }
-  }
+  // Resolve the team's VEX id, then load the events it's registered for.
+  // (The VEX API has no event name-search, so we list the team's own events.)
+  useEffect(() => {
+    let cancelled = false
+    setStatus('loading')
+    ;(async () => {
+      try {
+        const t = await getTeam(teamNumber)
+        if (cancelled) return
+        if (!t?.id) { setStatus('notfound'); return }
+        const evs = await getTeamEvents(t.id)
+        if (cancelled) return
+        setEvents(Array.isArray(evs) ? evs : [])
+        setStatus('ready')
+      } catch {
+        if (!cancelled) setStatus('error')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [teamNumber])
 
   // "Upcoming & current" = events that haven't ended yet (end date today or later).
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
   const visible = upcomingOnly
-    ? results.filter(ev => {
+    ? events.filter(ev => {
         const end = ev.end || ev.start
         return !end || new Date(end) >= todayStart
       })
-    : results
+    : events
+
+  const muted = { color: 'var(--text-muted)', fontSize: '14px', textAlign: 'center', padding: '20px 0' }
 
   return (
     <div style={{ padding: '20px 16px 32px', maxWidth: '560px', margin: '0 auto' }}>
       <p style={sectionLabel}>VERALIS</p>
       <h1 style={{ margin: '4px 0 4px', fontSize: '26px', fontWeight: '800' }}>Live Event Mode</h1>
       <p style={{ margin: '0 0 24px', color: 'var(--text-muted)', fontSize: '14px' }}>
-        Team {teamNumber} · Search for your event to load your match schedule.
+        Team {teamNumber} · Pick an event to load your match schedule.
       </p>
 
-      <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-        <input
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="Search by event name or city…"
-          style={{
-            flex: 1, height: '48px', padding: '0 14px',
-            background: 'var(--surface)', border: '1.5px solid var(--border)',
-            borderRadius: '10px', color: 'var(--text)', fontSize: '15px',
-            fontFamily: 'inherit', outline: 'none',
-          }}
-        />
-        <button
-          type="submit"
-          disabled={searching || !query.trim()}
-          style={{
-            height: '48px', padding: '0 20px', background: 'var(--accent)',
-            color: '#fff', border: 'none', borderRadius: '10px',
-            fontSize: '15px', fontWeight: '700',
-            cursor: searching || !query.trim() ? 'default' : 'pointer',
-            opacity: searching || !query.trim() ? 0.6 : 1,
-          }}
-        >
-          {searching ? '…' : 'Search'}
-        </button>
-      </form>
-
-      {searched && (
+      {status === 'ready' && events.length > 0 && (
         <button
           type="button"
           onClick={() => setUpcomingOnly(v => !v)}
@@ -136,16 +115,14 @@ function EventPicker({ teamNumber, onSelect }) {
         </button>
       )}
 
-      {searched && results.length === 0 && (
-        <p style={{ color: 'var(--text-muted)', fontSize: '14px', textAlign: 'center', padding: '20px 0' }}>
-          No events found — try a shorter name or city.
-        </p>
+      {status === 'loading' && <p style={muted}>Loading your team's events…</p>}
+      {status === 'error' && <p style={muted}>Couldn't load events — check your connection and try again.</p>}
+      {status === 'notfound' && <p style={muted}>Team {teamNumber} wasn't found in the VEX database.</p>}
+      {status === 'ready' && events.length === 0 && (
+        <p style={muted}>Team {teamNumber} isn't registered for any events yet.</p>
       )}
-
-      {searched && results.length > 0 && visible.length === 0 && (
-        <p style={{ color: 'var(--text-muted)', fontSize: '14px', textAlign: 'center', padding: '20px 0' }}>
-          No upcoming events found — turn off the filter to see past events.
-        </p>
+      {status === 'ready' && events.length > 0 && visible.length === 0 && (
+        <p style={muted}>No upcoming events — turn off the filter to see past events.</p>
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
