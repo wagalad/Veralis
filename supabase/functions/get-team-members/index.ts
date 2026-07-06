@@ -48,24 +48,39 @@ Deno.serve(async (req) => {
 
   if (!callerMembership) return json({ error: 'You are not a member of this team.' }, 403)
 
-  // Get all memberships with profile data; admins sort first alphabetically
+  // Get all memberships; admins sort first ('admin' < 'member' ascending).
   const { data: memberships, error: memberErr } = await admin
     .from('team_memberships')
-    .select('user_id, role, profiles(display_name)')
+    .select('user_id, role')
     .eq('team_id', team_id)
     .order('role')
 
   if (memberErr) return json({ error: 'Something went wrong. Please try again.' }, 500)
 
-  // Enrich each member with their email from auth.admin
+  const userIds = (memberships ?? []).map((m) => m.user_id)
+
+  // Fetch display names in one query rather than relying on a PostgREST embed
+  // (team_memberships has no direct FK relationship PostgREST will join on).
+  const { data: profiles, error: profileErr } = await admin
+    .from('profiles')
+    .select('id, display_name')
+    .in('id', userIds)
+
+  if (profileErr) return json({ error: 'Something went wrong. Please try again.' }, 500)
+
+  const nameById = new Map(
+    (profiles ?? []).map((p) => [p.id as string, p.display_name as string | null]),
+  )
+
+  // Enrich each member with their email from auth.admin.
   const members = await Promise.all(
     (memberships ?? []).map(async (m) => {
-      const { data: { user: authUser } } = await admin.auth.admin.getUserById(m.user_id)
+      const { data } = await admin.auth.admin.getUserById(m.user_id)
       return {
         user_id: m.user_id,
         role: m.role,
-        email: authUser?.email ?? null,
-        display_name: (m.profiles as { display_name: string | null } | null)?.display_name ?? null,
+        email: data?.user?.email ?? null,
+        display_name: nameById.get(m.user_id) ?? null,
       }
     })
   )

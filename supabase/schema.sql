@@ -120,7 +120,12 @@ create table public.team_memberships (
   team_id    uuid references public.teams(id) on delete cascade not null,
   role       text not null default 'member' check (role in ('admin', 'member')),
   joined_at  timestamptz default now(),
-  unique (user_id, team_id)
+  unique (user_id, team_id),
+  -- Second FK on user_id to public.profiles so PostgREST can embed
+  -- profiles(display_name) in the get-team-members Edge Function. Without
+  -- this, the embed fails with PGRST200 and the member list can't load.
+  constraint team_memberships_user_id_profiles_fkey
+    foreign key (user_id) references public.profiles(id) on delete cascade
 );
 
 alter table public.team_memberships enable row level security;
