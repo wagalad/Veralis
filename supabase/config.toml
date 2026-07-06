@@ -41,3 +41,8 @@ entrypoint = "./functions/get-team-members/index.ts"
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/mfa-recovery/index.ts"
+
+[functions.summarize-scouting]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/summarize-scouting/index.ts"

@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTeam } from '../hooks/useTeam'
+import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { supabase } from '../lib/supabase'
 import { searchTeams, getTeamStats } from '../lib/vexApi'
 
@@ -163,6 +164,7 @@ export default function Search() {
               expanded={expandedId === vexTeam.id}
               expandedData={expandedData[vexTeam.id]}
               hasTeam={!!team}
+              teamId={team?.id}
               onToggle={() => toggleExpand(vexTeam)}
             />
           ))}
@@ -174,7 +176,7 @@ export default function Search() {
 
 // ── Individual team result card ───────────────────────────────────────────────
 
-function TeamCard({ vexTeam, expanded, expandedData, hasTeam, onToggle }) {
+function TeamCard({ vexTeam, expanded, expandedData, hasTeam, teamId, onToggle }) {
   const [showBreakdown, setShowBreakdown] = useState(false)
   const loc = [vexTeam.location?.city, vexTeam.location?.region]
     .filter(Boolean).join(', ')
@@ -273,6 +275,7 @@ function TeamCard({ vexTeam, expanded, expandedData, hasTeam, onToggle }) {
                 entries={expandedData.scouting ?? []}
                 teamNumber={vexTeam.number}
                 hasTeam={hasTeam}
+                teamId={teamId}
               />
             </>
           )}
@@ -660,9 +663,14 @@ function AwardsSection({ stats }) {
 
 // ── Our team's scouting on this team ─────────────────────────────────────────
 
-function ScoutingSection({ entries, teamNumber, hasTeam }) {
+function ScoutingSection({ entries, teamNumber, hasTeam, teamId }) {
   return (
     <div>
+      {/* AI brief of our own scouting — only when we have a team + some data */}
+      {hasTeam && teamId && entries.length >= 1 && (
+        <AiSummarySection teamId={teamId} teamNumber={teamNumber} entryCount={entries.length} />
+      )}
+
       <p style={{ ...sectionLabel, marginBottom: '8px' }}>
         Our scouting{entries.length > 0 ? ` · ${entries.length}` : ''}
       </p>
@@ -702,6 +710,78 @@ function ScoutingSection({ entries, teamNumber, hasTeam }) {
             Scout again →
           </Link>
         </div>
+      )}
+    </div>
+  )
+}
+
+// ── AI Summary ("SparkNotes") of our own scouting on this team ────────────────
+// Server-side Edge Function does the model call + caching + team-scoping; this
+// just renders it, clearly marked as AI-generated and traceable to N reports.
+
+function AiHeader() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+      <span style={{ fontSize: '13px' }}>✨</span>
+      <span style={{ ...sectionLabel, color: 'var(--accent)' }}>AI Summary</span>
+      <span style={{
+        fontSize: '9px', fontWeight: '700', letterSpacing: '0.06em', textTransform: 'uppercase',
+        padding: '2px 7px', borderRadius: '20px',
+        background: 'rgba(204,0,0,0.12)', color: 'var(--accent)', border: '1px solid rgba(204,0,0,0.22)',
+      }}>
+        AI-generated
+      </span>
+    </div>
+  )
+}
+
+function AiSummarySection({ teamId, teamNumber, entryCount }) {
+  const online = useOnlineStatus()
+  // status: 'loading' | 'ok' | 'error' | 'offline'
+  const [result, setResult] = useState({ status: 'loading' })
+
+  useEffect(() => {
+    if (!online) { setResult({ status: 'offline' }); return }
+    if (!teamId) return
+    let cancelled = false
+    setResult({ status: 'loading' })
+    supabase.functions
+      .invoke('summarize-scouting', { body: { team_id: teamId, scouted_team_number: teamNumber } })
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error || data?.error || !data?.summary) { setResult({ status: 'error' }); return }
+        setResult({ status: 'ok', summary: data.summary, count: data.entry_count, enough: data.enough })
+      })
+      .catch(() => { if (!cancelled) setResult({ status: 'error' }) })
+    return () => { cancelled = true }
+  }, [teamId, teamNumber, entryCount, online])
+
+  // Offline: fail silently — never break the page or imply data we don't have.
+  if (result.status === 'offline') return null
+
+  return (
+    <div style={aiCard}>
+      <AiHeader />
+
+      {result.status === 'loading' && (
+        <p style={aiMuted}>Reading your team's scouting…</p>
+      )}
+
+      {result.status === 'error' && (
+        <p style={aiMuted}>Summary unavailable right now.</p>
+      )}
+
+      {result.status === 'ok' && (
+        <>
+          <p style={{ margin: '9px 0 0', fontSize: '14px', lineHeight: 1.5, color: 'var(--text)' }}>
+            {result.summary}
+          </p>
+          {result.enough && (
+            <p style={{ margin: '8px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>
+              Based on {result.count} scouting {result.count === 1 ? 'report' : 'reports'} from your team · AI-generated, double-check before trusting.
+            </p>
+          )}
+        </>
       )}
     </div>
   )
@@ -747,3 +827,7 @@ const card        = { background: 'var(--surface)', border: '1px solid var(--bor
 const sectionLabel = { margin: 0, color: 'var(--text-muted)', fontSize: '11px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase' }
 const btnPrimary  = { height: '52px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer' }
 const inputStyle  = { height: '52px', padding: '0 14px', background: 'var(--surface-2)', border: '1.5px solid var(--border)', borderRadius: '10px', color: 'var(--text)', fontFamily: 'inherit', outline: 'none', width: '100%', boxSizing: 'border-box' }
+// Accent-tinted card so the AI brief reads as distinct from the neutral,
+// human-entered scouting blocks below it (which use --surface-2).
+const aiCard      = { marginBottom: '18px', padding: '12px 14px', borderRadius: '10px', border: '1px solid rgba(204,0,0,0.22)', background: 'rgba(204,0,0,0.045)' }
+const aiMuted     = { margin: '9px 0 0', fontSize: '13px', color: 'var(--text-muted)' }
