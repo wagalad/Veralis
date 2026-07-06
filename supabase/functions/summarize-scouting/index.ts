@@ -25,7 +25,27 @@ Strict rules:
 - If several reports exist, aggregate them. If they disagree on something, say it is inconsistent (e.g. "inconsistent autonomous") rather than picking one.
 - Do NOT mention match records, rankings, awards, or skills scores — they are not in the reports.
 - If the reports contain too little information to say anything meaningful, respond with exactly: "Not enough scouting on this team yet."
-- Output 1-2 sentences, roughly 35 words max. Plain text only: no preamble, no markdown, no bullet points, no surrounding quotes.`
+- Never pad, repeat, or speculate to reach a length. Say only what the reports support, then stop — a shorter honest answer is always better than a padded one.
+- Output plain text only: no preamble, no markdown, no bullet points, no surrounding quotes. Follow the length guidance provided below.`
+
+// Length scales with how much scouting exists: thin data stays terse (which
+// also resists padding/fabrication); well-scouted robots earn a fuller brief.
+// Crossing a tier requires adding/removing a report, which changes the content
+// hash — so the cache regenerates at the new length automatically.
+function verbosityFor(n: number): { guidance: string; maxTokens: number } {
+  if (n >= 10) return {
+    guidance: 'Length guidance: you have many reports (' + n + '). Write 3-4 sentences, up to ~90 words, covering the robot\'s notable strengths, weaknesses, and any consistent patterns — but ONLY what the reports actually support.',
+    maxTokens: 320,
+  }
+  if (n >= 5) return {
+    guidance: 'Length guidance: you have a moderate number of reports (' + n + '). Write 2-3 sentences, up to ~60 words.',
+    maxTokens: 220,
+  }
+  return {
+    guidance: 'Length guidance: only a few reports (' + n + '). Keep it to 1-2 sentences, ~35 words max. Do not pad or speculate to fill space.',
+    maxTokens: 160,
+  }
+}
 
 // Human-readable labels for the coded scouting fields (mirrors the frontend).
 const DRIVETRAIN: Record<string, string> = { tank: 'Tank', mecanum: 'Mecanum', xdrive: 'X-drive', other: 'Other/unsure' }
@@ -86,9 +106,13 @@ function renderReports(entries: Entry[], robot: string): string {
 }
 
 // The ONLY place the model is called. Returns the summary text, or throws.
-async function generateSummary(reportsText: string): Promise<string> {
+// Length guidance + token budget are computed from the report count so the
+// brief scales with how much scouting actually exists.
+async function generateSummary(reportsText: string, entryCount: number): Promise<string> {
   const apiKey = Deno.env.get('GEMINI_API_KEY')
   if (!apiKey) throw new Error('not-configured')
+
+  const { guidance, maxTokens } = verbosityFor(entryCount)
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
@@ -96,10 +120,10 @@ async function generateSummary(reportsText: string): Promise<string> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        systemInstruction: { parts: [{ text: `${SYSTEM_PROMPT}\n\n${guidance}` }] },
         contents: [{ role: 'user', parts: [{ text: reportsText }] }],
         // Low temperature keeps it factual and close to the data.
-        generationConfig: { temperature: 0.2, topP: 0.9, maxOutputTokens: 200 },
+        generationConfig: { temperature: 0.2, topP: 0.9, maxOutputTokens: maxTokens },
       }),
     },
   )
@@ -211,7 +235,7 @@ Deno.serve(async (req) => {
 
   let summary: string
   try {
-    summary = await generateSummary(renderReports(rows, robot))
+    summary = await generateSummary(renderReports(rows, robot), entryCount)
   } catch (err) {
     const msg = (err as Error).message
     if (msg === 'not-configured') {
