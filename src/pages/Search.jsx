@@ -722,8 +722,7 @@ function ScoutingSection({ entries, teamNumber, hasTeam, teamId }) {
 function AiHeader() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-      <span style={{ fontSize: '13px' }}>✨</span>
-      <span style={{ ...sectionLabel, color: 'var(--accent)' }}>AI Summary</span>
+      <span style={{ ...sectionLabel, color: 'var(--accent)' }}>Summary</span>
       <span style={{
         fontSize: '9px', fontWeight: '700', letterSpacing: '0.06em', textTransform: 'uppercase',
         padding: '2px 7px', borderRadius: '20px',
