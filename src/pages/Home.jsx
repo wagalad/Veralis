@@ -292,11 +292,18 @@ function MatchSchedule({ event, team, matches, loading, error, entries, onChange
         <button
           onClick={onChangeEvent}
           style={{
-            flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border)',
-            color: 'var(--text-muted)', borderRadius: '8px', padding: '8px 12px',
-            fontSize: '12px', cursor: 'pointer',
+            flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '7px',
+            background: 'rgba(204,0,0,0.10)', border: '1px solid var(--accent)',
+            color: 'var(--accent)', borderRadius: '9px', padding: '9px 14px',
+            fontSize: '13px', fontWeight: '700', cursor: 'pointer',
           }}
         >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M7 4 3 8l4 4" />
+            <path d="M3 8h13a4 4 0 0 1 4 4" />
+            <path d="m17 20 4-4-4-4" />
+            <path d="M21 16H8a4 4 0 0 1-4-4" />
+          </svg>
           Change event
         </button>
       </div>
