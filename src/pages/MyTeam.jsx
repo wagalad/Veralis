@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTeam } from '../hooks/useTeam'
+import { useScoutingEntries } from '../hooks/useScoutingEntries'
 
 export default function MyTeam() {
   const { user, loading: authLoading } = useAuth()
@@ -58,9 +59,221 @@ export default function MyTeam() {
         <TeamSetup createTeam={createTeam} joinTeam={joinTeam} />
       )}
 
+      {/* Read-only log of the whole team's scouting output */}
+      {team && (
+        <ScoutingLog team={team} getMembers={getMembers} currentUserId={user.id} onScout={() => navigate('/scout')} />
+      )}
+
     </div>
   )
 }
+
+// ── Scouting log — read-only view of the whole team's entries ────────────────
+
+const DRIVE  = { tank: 'Tank', mecanum: 'Mecanum', xdrive: 'X-drive', other: 'Other' }
+const INTAKE = { strong: 'Strong intake', okay: 'Okay intake', weak: 'Weak intake', none: 'No intake' }
+const SCORE  = { fast: 'Fast scoring', average: 'Avg scoring', slow: 'Slow scoring', cant_tell: 'Scoring ?' }
+const AUTO   = { strong: 'Strong auto', works: 'Auto works', weak_none: 'Weak/no auto', didnt_see: 'Auto unseen' }
+
+function timeAgo(iso) {
+  const d = new Date(iso)
+  if (isNaN(d)) return ''
+  const s = (Date.now() - d.getTime()) / 1000
+  if (s < 60) return 'just now'
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
+  if (s < 604800) return `${Math.floor(s / 86400)}d ago`
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function ScoutingLog({ team, getMembers, currentUserId, onScout }) {
+  const { entries, loading } = useScoutingEntries(team)
+  const [members, setMembers] = useState([])
+  const [teamFilter, setTeamFilter] = useState('')
+  const [scoutFilter, setScoutFilter] = useState('all')
+  const [expanded, setExpanded] = useState(null)
+  const [limit, setLimit] = useState(15)
+
+  useEffect(() => {
+    let cancelled = false
+    getMembers(team.id).then(m => { if (!cancelled) setMembers(m || []) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [team.id])
+
+  const nameById = useMemo(() => {
+    const map = {}
+    for (const m of members) map[m.user_id] = m.display_name || m.email || 'Unknown'
+    return map
+  }, [members])
+
+  const scoutName = (id) =>
+    id === currentUserId ? 'You' : (nameById[id] || 'Teammate')
+
+  const filtered = useMemo(() => entries.filter(e => {
+    const num = (e.scouted_team_number || '').toUpperCase()
+    if (teamFilter && !num.includes(teamFilter.toUpperCase())) return false
+    if (scoutFilter !== 'all' && e.created_by !== scoutFilter) return false
+    return true
+  }), [entries, teamFilter, scoutFilter])
+
+  const visible = filtered.slice(0, limit)
+  const key = (e) => e.id || e._local_id
+
+  return (
+    <div style={{ ...card, marginBottom: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '14px' }}>
+        <p style={label}>
+          Scouting log{entries.length ? ` · ${entries.length}` : ''}
+        </p>
+        {entries.length > 0 && (
+          <button onClick={onScout} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '13px', fontWeight: '600', cursor: 'pointer', padding: 0 }}>
+            + Scout
+          </button>
+        )}
+      </div>
+
+      {/* Empty / loading states */}
+      {loading && entries.length === 0 && (
+        <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>Loading…</p>
+      )}
+      {!loading && entries.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '18px 8px' }}>
+          <p style={{ margin: '0 0 14px', fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            No scouting entries yet. Forms your team submits will collect here.
+          </p>
+          <button onClick={onScout} style={{ ...btnPrimary, height: '44px', padding: '0 20px', fontSize: '14px' }}>
+            Scout a team
+          </button>
+        </div>
+      )}
+
+      {entries.length > 0 && (
+        <>
+          {/* Filters */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            <input
+              value={teamFilter}
+              onChange={e => { setTeamFilter(e.target.value.toUpperCase()); setLimit(15) }}
+              placeholder="Filter by team #"
+              style={{ ...inputStyle, height: '40px', fontSize: '13px', flex: 1 }}
+            />
+            <select
+              value={scoutFilter}
+              onChange={e => { setScoutFilter(e.target.value); setLimit(15) }}
+              style={{
+                height: '40px', padding: '0 10px', flexShrink: 0, maxWidth: '42%',
+                background: 'var(--surface-2)', border: '1.5px solid var(--border)',
+                borderRadius: '10px', color: 'var(--text)', fontSize: '13px', fontFamily: 'inherit', outline: 'none',
+              }}
+            >
+              <option value="all">All scouts</option>
+              {members.map(m => (
+                <option key={m.user_id} value={m.user_id}>
+                  {m.user_id === currentUserId ? 'You' : (m.display_name || m.email || 'Member')}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {filtered.length === 0 ? (
+            <p style={{ margin: '4px 0', fontSize: '13px', color: 'var(--text-muted)' }}>No entries match those filters.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {visible.map(e => (
+                <EntryRow
+                  key={key(e)}
+                  entry={e}
+                  scout={scoutName(e.created_by)}
+                  open={expanded === key(e)}
+                  onToggle={() => setExpanded(expanded === key(e) ? null : key(e))}
+                />
+              ))}
+            </div>
+          )}
+
+          {filtered.length > limit && (
+            <button
+              onClick={() => setLimit(l => l + 20)}
+              style={{ ...btnSecondary, width: '100%', height: '42px', fontSize: '13px', marginTop: '10px' }}
+            >
+              Show {Math.min(20, filtered.length - limit)} more
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+function EntryRow({ entry, scout, open, onToggle }) {
+  const tags = [DRIVE[entry.drivetrain], INTAKE[entry.intake], SCORE[entry.scoring]].filter(Boolean)
+  const stars = entry.reliability ? '★'.repeat(entry.reliability) + '☆'.repeat(5 - entry.reliability) : null
+
+  return (
+    <div style={{ background: 'var(--surface-2)', borderRadius: '10px', overflow: 'hidden' }}>
+      <button
+        onClick={onToggle}
+        aria-expanded={open}
+        style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '12px', fontFamily: 'inherit' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+          <span style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)' }}>
+            {entry.scouted_team_number}
+            {entry._synced === false && (
+              <span style={{ marginLeft: '8px', fontSize: '10px', fontWeight: '700', color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                pending
+              </span>
+            )}
+          </span>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', flexShrink: 0 }}>{timeAgo(entry.created_at)}</span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
+          {tags.length > 0 && <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{tags.join(' · ')}</span>}
+          {stars && <span style={{ fontSize: '11px', color: '#f59e0b', letterSpacing: '1px' }}>{stars}</span>}
+        </div>
+
+        {!open && entry.note && (
+          <p style={{ margin: '5px 0 0', fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            "{entry.note}"
+          </p>
+        )}
+      </button>
+
+      {open && (
+        <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <DetailRow k="Drivetrain" v={DRIVE[entry.drivetrain]} />
+          <DetailRow k="Intake" v={INTAKE[entry.intake]} />
+          <DetailRow k="Scoring" v={SCORE[entry.scoring]} />
+          <DetailRow k="Autonomous" v={AUTO[entry.autonomous]} />
+          <DetailRow k="Reliability" v={entry.reliability ? `${entry.reliability}/5` : null} />
+          {entry.photo_url && <DetailRow k="Photo" v="Attached" />}
+          {entry.note && (
+            <div style={{ marginTop: '2px' }}>
+              <p style={{ ...detailK, marginBottom: '2px' }}>Note</p>
+              <p style={{ margin: 0, fontSize: '13px', color: 'var(--text)', lineHeight: 1.5, fontStyle: 'italic' }}>"{entry.note}"</p>
+            </div>
+          )}
+          <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>
+            Scouted by <span style={{ color: 'var(--text)', fontWeight: '600' }}>{scout}</span>
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DetailRow({ k, v }) {
+  if (!v) return null
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '13px' }}>
+      <span style={detailK}>{k}</span>
+      <span style={{ color: 'var(--text)', fontWeight: '500', textAlign: 'right' }}>{v}</span>
+    </div>
+  )
+}
+
+const detailK = { margin: 0, color: 'var(--text-muted)', fontSize: '12px' }
 
 // ── Team card shown when user is already in a team ──────────────────────────
 
