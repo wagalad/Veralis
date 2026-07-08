@@ -91,30 +91,30 @@ function EventPicker({ teamNumber, onSelect }) {
         </p>
 
         {status === 'ready' && events.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setUpcomingOnly(v => !v)}
-            role="switch"
-            aria-checked={upcomingOnly}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px',
-              background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-              color: 'var(--text)', fontFamily: 'inherit', fontSize: '13px', fontWeight: '600',
-            }}
-          >
-            <span style={{
-              width: '38px', height: '22px', borderRadius: '11px', flexShrink: 0,
-              background: upcomingOnly ? 'var(--accent)' : 'var(--border)',
-              position: 'relative', transition: 'background 0.15s',
-            }}>
-              <span style={{
-                position: 'absolute', top: '2px', left: upcomingOnly ? '18px' : '2px',
-                width: '18px', height: '18px', borderRadius: '50%', background: '#fff',
-                transition: 'left 0.15s',
-              }} />
-            </span>
-            Upcoming &amp; current events only
-          </button>
+          <div style={{ display: 'flex', gap: '4px', padding: '3px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '10px', marginBottom: '14px', width: 'fit-content' }}>
+            {[
+              { key: true, label: 'Upcoming & current' },
+              { key: false, label: 'All events' },
+            ].map(({ key, label }) => {
+              const active = upcomingOnly === key
+              return (
+                <button
+                  key={String(key)}
+                  type="button"
+                  onClick={() => setUpcomingOnly(key)}
+                  aria-pressed={active}
+                  style={{
+                    padding: '7px 14px', borderRadius: '7px', border: 'none', cursor: 'pointer',
+                    fontSize: '13px', fontWeight: '700', fontFamily: 'inherit',
+                    background: active ? 'var(--accent)' : 'transparent',
+                    color: active ? '#fff' : 'var(--text-muted)',
+                  }}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
         )}
 
         {status === 'loading' && <p style={muted}>Loading your team's events…</p>}
@@ -124,7 +124,7 @@ function EventPicker({ teamNumber, onSelect }) {
           <p style={muted}>Team {teamNumber} isn't registered for any events yet.</p>
         )}
         {status === 'ready' && events.length > 0 && visible.length === 0 && (
-          <p style={muted}>No upcoming events — turn off the filter to see past events.</p>
+          <p style={muted}>No upcoming events — tap "All events" to see past ones.</p>
         )}
 
         <div>
