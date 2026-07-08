@@ -220,3 +220,35 @@ create index mfa_recovery_codes_user_idx on public.mfa_recovery_codes(user_id);
 
 alter table public.mfa_recovery_codes enable row level security;
 -- No policies: only the service role (Edge Function) may read/write.
+
+
+-- ============================================================
+-- 6. PLATFORM_ADMINS
+--    App-operator (super-admin) allowlist for the global admin view.
+--    A user_id here may read cross-team aggregate data via the service-role
+--    admin-panel Edge Function only (which also requires an AAL2 / 2FA session).
+--    Does not change per-team RLS. No client policies — service role only.
+-- ============================================================
+create table public.platform_admins (
+  user_id     uuid references auth.users(id) on delete cascade primary key,
+  created_at  timestamptz default now() not null
+);
+
+alter table public.platform_admins enable row level security;
+-- No policies: only the service role (Edge Function) may read/write.
+
+-- Authoritative 2FA status for the operator overview (auth.mfa_factors isn't
+-- exposed to PostgREST). Service-role only.
+create or replace function public.verified_factor_user_ids()
+returns jsonb
+language sql
+security definer
+set search_path = ''
+as $$
+  select coalesce(jsonb_agg(distinct user_id), '[]'::jsonb)
+  from auth.mfa_factors
+  where status = 'verified';
+$$;
+
+revoke execute on function public.verified_factor_user_ids() from public, anon, authenticated;
+grant execute on function public.verified_factor_user_ids() to service_role;

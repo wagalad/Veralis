@@ -1,15 +1,29 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import MfaSetup from '../components/MfaSetup'
+import { useAdmin } from '../hooks/useAdmin'
 import { getStoredTheme, setTheme } from '../lib/theme'
 
 export default function Settings() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
+  const admin = useAdmin()
   const [theme, setThemeState] = useState(getStoredTheme)
+  const [isOperator, setIsOperator] = useState(false)
 
   function chooseTheme(pref) { setTheme(pref); setThemeState(pref) }
+
+  // Probe operator access; the link only appears if the server says yes (i.e.
+  // the user is in platform_admins and their session is AAL2). Non-operators
+  // get a 403 and never see the entry point.
+  useEffect(() => {
+    if (!user) { setIsOperator(false); return }
+    let alive = true
+    admin.overview().then(() => alive && setIsOperator(true)).catch(() => {})
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
 
   return (
     <div style={{ padding: '24px 16px', maxWidth: '560px', margin: '0 auto' }}>
@@ -52,6 +66,14 @@ export default function Settings() {
         <div style={{ ...card, marginBottom: '12px' }}>
           <MfaSetup />
         </div>
+      )}
+
+      {/* Operator — only rendered for platform admins */}
+      {isOperator && (
+        <button onClick={() => navigate('/admin')} style={{ ...card, width: '100%', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: 'inherit', textAlign: 'left' }}>
+          <span style={{ fontWeight: 600, fontSize: '15px' }}>Operator dashboard</span>
+          <span style={{ color: 'var(--accent)', fontWeight: 700 }}>→</span>
+        </button>
       )}
 
       {user ? (

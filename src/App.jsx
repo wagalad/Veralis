@@ -8,6 +8,7 @@ import Scout from './pages/Scout'
 import MyTeam from './pages/MyTeam'
 import GameRules from './pages/GameRules'
 import Settings from './pages/Settings'
+import AdminPanel from './pages/AdminPanel'
 import Login from './pages/Login'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
@@ -51,6 +52,7 @@ function Shell() {
           <Route path="/my-team" element={<MyTeam />} />
           <Route path="/rules" element={<GameRules />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/admin" element={<AdminPanel />} />
           <Route path="/login" element={<Login />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
