@@ -27,7 +27,7 @@ export default function Home() {
       onAction={() => navigate('/my-team')}
     />
   )
-  if (!activeEvent) return <EventPicker teamNumber={team.team_number} onSelect={selectEvent} />
+  if (!activeEvent) return <EventHome team={team} entries={entries} onSelect={selectEvent} />
 
   return (
     <MatchSchedule
@@ -83,75 +83,116 @@ function EventPicker({ teamNumber, onSelect }) {
   const muted = { color: 'var(--text-muted)', fontSize: '14px', textAlign: 'center', padding: '20px 0' }
 
   return (
-    <div style={{ padding: '20px 16px 32px', maxWidth: '560px', margin: '0 auto' }}>
-      <h1 style={{ margin: '0 0 4px', fontSize: '26px', fontWeight: '800' }}>Live Event Mode</h1>
-      <p style={{ margin: '0 0 24px', color: 'var(--text-muted)', fontSize: '14px' }}>
-        Team {teamNumber} · Pick an event to load your match schedule.
-      </p>
+    <div style={card}>
+      <div style={cardHead}><span style={cardTitle}>Load an event</span></div>
+      <div style={{ padding: '14px 15px 6px' }}>
+        <p style={{ margin: '0 0 14px', color: 'var(--text-muted)', fontSize: '13px' }}>
+          Pick an event to load your team's match schedule.
+        </p>
 
-      {status === 'ready' && events.length > 0 && (
-        <button
-          type="button"
-          onClick={() => setUpcomingOnly(v => !v)}
-          role="switch"
-          aria-checked={upcomingOnly}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px',
-            background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-            color: 'var(--text)', fontFamily: 'inherit', fontSize: '13px', fontWeight: '600',
-          }}
-        >
-          <span style={{
-            width: '38px', height: '22px', borderRadius: '11px', flexShrink: 0,
-            background: upcomingOnly ? 'var(--accent)' : 'var(--border)',
-            position: 'relative', transition: 'background 0.15s',
-          }}>
+        {status === 'ready' && events.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setUpcomingOnly(v => !v)}
+            role="switch"
+            aria-checked={upcomingOnly}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px',
+              background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+              color: 'var(--text)', fontFamily: 'inherit', fontSize: '13px', fontWeight: '600',
+            }}
+          >
             <span style={{
-              position: 'absolute', top: '2px', left: upcomingOnly ? '18px' : '2px',
-              width: '18px', height: '18px', borderRadius: '50%', background: '#fff',
-              transition: 'left 0.15s',
-            }} />
-          </span>
-          Upcoming &amp; current events only
-        </button>
-      )}
+              width: '38px', height: '22px', borderRadius: '11px', flexShrink: 0,
+              background: upcomingOnly ? 'var(--accent)' : 'var(--border)',
+              position: 'relative', transition: 'background 0.15s',
+            }}>
+              <span style={{
+                position: 'absolute', top: '2px', left: upcomingOnly ? '18px' : '2px',
+                width: '18px', height: '18px', borderRadius: '50%', background: '#fff',
+                transition: 'left 0.15s',
+              }} />
+            </span>
+            Upcoming &amp; current events only
+          </button>
+        )}
 
-      {status === 'loading' && <p style={muted}>Loading your team's events…</p>}
-      {status === 'error' && <p style={muted}>Couldn't load events — check your connection and try again.</p>}
-      {status === 'notfound' && <p style={muted}>Team {teamNumber} wasn't found in the VEX database.</p>}
-      {status === 'ready' && events.length === 0 && (
-        <p style={muted}>Team {teamNumber} isn't registered for any events yet.</p>
-      )}
-      {status === 'ready' && events.length > 0 && visible.length === 0 && (
-        <p style={muted}>No upcoming events — turn off the filter to see past events.</p>
-      )}
+        {status === 'loading' && <p style={muted}>Loading your team's events…</p>}
+        {status === 'error' && <p style={muted}>Couldn't load events — check your connection and try again.</p>}
+        {status === 'notfound' && <p style={muted}>Team {teamNumber} wasn't found in the VEX database.</p>}
+        {status === 'ready' && events.length === 0 && (
+          <p style={muted}>Team {teamNumber} isn't registered for any events yet.</p>
+        )}
+        {status === 'ready' && events.length > 0 && visible.length === 0 && (
+          <p style={muted}>No upcoming events — turn off the filter to see past events.</p>
+        )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {visible.map(event => {
-          const city = [event.location?.city, event.location?.region].filter(Boolean).join(', ')
-          const date = event.start
-            ? new Date(event.start).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
-            : null
-          return (
-            <button
-              key={event.id}
-              onClick={() => onSelect(event)}
-              style={{
-                display: 'block', width: '100%', textAlign: 'left',
-                background: 'var(--surface)', border: '1px solid var(--border)',
-                borderRadius: '12px', padding: '14px 16px', cursor: 'pointer',
-              }}
-            >
-              <p style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: '700', color: 'var(--text)' }}>
-                {event.name}
-              </p>
-              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>
-                {[city, date].filter(Boolean).join(' · ')}
-              </p>
-            </button>
-          )
-        })}
+        <div>
+          {visible.map((event, i) => {
+            const city = [event.location?.city, event.location?.region].filter(Boolean).join(', ')
+            const date = event.start
+              ? new Date(event.start).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+              : null
+            return (
+              <button
+                key={event.id}
+                onClick={() => onSelect(event)}
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left',
+                  background: 'transparent', border: 'none',
+                  borderTop: i === 0 ? 'none' : '1px solid var(--border)',
+                  padding: '12px 2px', cursor: 'pointer',
+                }}
+              >
+                <p style={{ margin: '0 0 2px', fontSize: '14px', fontWeight: '700', color: 'var(--text)' }}>
+                  {event.name}
+                </p>
+                <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>
+                  {[city, date].filter(Boolean).join(' · ')}
+                </p>
+              </button>
+            )
+          })}
+        </div>
       </div>
+    </div>
+  )
+}
+
+// ── Event home (no active event: event picker + scouting modules) ─────────────
+
+function EventHome({ team, entries, onSelect }) {
+  const isDesktop = useMediaQuery('(min-width: 900px)')
+  const online = useOnlineStatus()
+  const myNumber = team.team_number?.toUpperCase()
+  const { pending, reports, teamsScouted, scoutsToday } = deriveStats(entries)
+
+  const pickerBlock = <EventPicker teamNumber={team.team_number} onSelect={onSelect} />
+  const snapshotBlock = <TeamSnapshot reports={reports} teamsScouted={teamsScouted} scoutsToday={scoutsToday} />
+  const recentBlock = <RecentScouting entries={entries} />
+  const offlineBlock = <OfflineQueue pending={pending} online={online} />
+  const lookupBlock = <QuickLookup entries={entries} />
+
+  return (
+    <div className="home-dash">
+      <div style={{ marginBottom: '18px' }}>
+        <h1 style={{ margin: '0 0 6px', fontSize: '26px', fontWeight: '800' }}>Live Event Mode</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Team {myNumber}</span>
+          <StatusPill online={online} pending={pending.length} />
+        </div>
+      </div>
+
+      {isDesktop ? (
+        <div className="home-grid">
+          <div className="home-col">{pickerBlock}{recentBlock}{offlineBlock}</div>
+          <div className="home-col">{snapshotBlock}{lookupBlock}</div>
+        </div>
+      ) : (
+        <div className="home-grid">
+          {pickerBlock}{snapshotBlock}{recentBlock}{offlineBlock}{lookupBlock}
+        </div>
+      )}
     </div>
   )
 }
@@ -174,14 +215,7 @@ function MatchSchedule({ event, team, matches, loading, error, entries, onChange
     .sort((a, b) => (b.scheduled ?? '').localeCompare(a.scheduled ?? ''))
 
   // Real scouting stats derived from this team's entries — no fabricated numbers.
-  const pending = entries.filter(e => !e._synced)
-  const reports = entries.length
-  const teamsScouted = new Set(
-    entries.map(e => (e.scouted_team_number ?? e.teamNumber)?.toUpperCase()).filter(Boolean)
-  ).size
-  const scoutsToday = new Set(
-    entries.filter(e => isToday(e.created_at)).map(e => e.created_by).filter(Boolean)
-  ).size
+  const { pending, reports, teamsScouted, scoutsToday } = deriveStats(entries)
 
   function toggleTeam(teamNumber, matchId) {
     setActiveTeam(prev =>
@@ -743,6 +777,20 @@ function isToday(iso) {
   if (!iso) return false
   const d = new Date(iso)
   return !isNaN(d) && d.toDateString() === new Date().toDateString()
+}
+
+// Real scouting stats from a team's entries (shared by the event + no-event views).
+function deriveStats(entries) {
+  return {
+    pending: entries.filter(e => !e._synced),
+    reports: entries.length,
+    teamsScouted: new Set(
+      entries.map(e => (e.scouted_team_number ?? e.teamNumber)?.toUpperCase()).filter(Boolean)
+    ).size,
+    scoutsToday: new Set(
+      entries.filter(e => isToday(e.created_at)).map(e => e.created_by).filter(Boolean)
+    ).size,
+  }
 }
 
 function timeAgo(iso) {
