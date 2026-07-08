@@ -232,15 +232,16 @@ function MatchSchedule({ event, team, matches, loading, error, entries, onChange
         <div>
           <p style={sectionLabel}>Next matches</p>
           <div style={{
-            display: 'flex', flexDirection: 'column', gap: '8px',
             maxHeight: 'clamp(340px, 56vh, 600px)', overflowY: 'auto',
             padding: '8px', border: '1px solid var(--border)', borderRadius: '12px',
             scrollbarWidth: 'thin',
           }}>
-            {upcoming.map((m, i) => (
-              <MatchCard key={m.id} match={m} myNumber={myNumber} isNext={i === 0}
-                activeTeam={activeTeam} onToggleTeam={toggleTeam} entries={entries} />
-            ))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {upcoming.map((m, i) => (
+                <MatchCard key={m.id} match={m} myNumber={myNumber} isNext={i === 0}
+                  activeTeam={activeTeam} onToggleTeam={toggleTeam} entries={entries} />
+              ))}
+            </div>
           </div>
         </div>
       )}
