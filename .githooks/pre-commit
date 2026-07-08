@@ -1,0 +1,29 @@
+#!/usr/bin/env sh
+# ─────────────────────────────────────────────────────────────────────────────
+# Pre-commit secret scan. Blocks a commit if gitleaks finds a likely secret
+# (API key, token, private key, etc.) in the STAGED changes — before it can
+# ever leave this machine. Enabled via: git config core.hooksPath .githooks
+# Requires gitleaks:  brew install gitleaks
+# ─────────────────────────────────────────────────────────────────────────────
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "⚠️  gitleaks not installed — skipping secret scan."
+  echo "    Install it to re-enable protection:  brew install gitleaks"
+  exit 0
+fi
+
+gitleaks git --staged --no-banner --redact -v
+status=$?
+
+if [ "$status" -ne 0 ]; then
+  echo ""
+  echo "🚫 Commit blocked — gitleaks flagged a potential secret in your staged changes."
+  echo "   • Review the finding above (values are redacted)."
+  echo "   • If it's a REAL secret: remove it, move it to an Edge Function secret / .env,"
+  echo "     and rotate the key if it was ever real."
+  echo "   • If it's a false positive: add a  # gitleaks:allow  comment on that line,"
+  echo "     or allowlist it in .gitleaks.toml, then commit again."
+  exit 1
+fi
+
+exit 0
