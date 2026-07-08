@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTeam } from '../hooks/useTeam'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
@@ -26,6 +26,19 @@ export default function Search() {
   const [expandedId, setExpandedId] = useState(null)
   const [expandedData, setExpandedData] = useState({})
 
+  const [searchParams] = useSearchParams()
+
+  // Arrived via /search?q=… (Quick Lookup, "Full profile" / recent-scouting
+  // links): pre-fill the box and run the search automatically.
+  useEffect(() => {
+    const q = searchParams.get('q')
+    if (q) {
+      setQuery(q)
+      runSearch(q)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
   if (!user) {
     return (
       <div style={{ padding: '24px 16px', maxWidth: '560px', margin: '0 auto' }}>
@@ -43,22 +56,26 @@ export default function Search() {
     )
   }
 
-  async function handleSearch(e) {
-    e?.preventDefault()
-    const q = query.trim()
+  async function runSearch(rawQuery, prog = program) {
+    const q = (rawQuery ?? '').trim()
     if (!q) return
     setSearching(true)
     setSearchError(null)
     setResults(null)
     setExpandedId(null)
     try {
-      const teams = await searchTeams(q, program)
+      const teams = await searchTeams(q, prog)
       setResults(teams)
     } catch (err) {
       setSearchError(err.message)
     } finally {
       setSearching(false)
     }
+  }
+
+  function handleSearch(e) {
+    e?.preventDefault()
+    runSearch(query, program)
   }
 
   async function toggleExpand(vexTeam) {
