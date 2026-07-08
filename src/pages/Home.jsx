@@ -82,8 +82,7 @@ function EventPicker({ teamNumber, onSelect }) {
 
   return (
     <div style={{ padding: '20px 16px 32px', maxWidth: '560px', margin: '0 auto' }}>
-      <p style={sectionLabel}>VERALIS</p>
-      <h1 style={{ margin: '4px 0 4px', fontSize: '26px', fontWeight: '800' }}>Live Event Mode</h1>
+      <h1 style={{ margin: '0 0 4px', fontSize: '26px', fontWeight: '800' }}>Live Event Mode</h1>
       <p style={{ margin: '0 0 24px', color: 'var(--text-muted)', fontSize: '14px' }}>
         Team {teamNumber} · Pick an event to load your match schedule.
       </p>
@@ -201,7 +200,7 @@ function MatchSchedule({ event, team, matches, loading, error, entries, onChange
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px', gap: '12px' }}>
         <div>
-          <p style={sectionLabel}>VERALIS · LIVE</p>
+          <p style={sectionLabel}>Live event</p>
           <h1 style={{ margin: '2px 0 2px', fontSize: '20px', fontWeight: '800', lineHeight: 1.2 }}>
             {event.name}
           </h1>
@@ -222,16 +221,19 @@ function MatchSchedule({ event, team, matches, loading, error, entries, onChange
       {/* Queue alert banner */}
       {queueAlert && (
         <div style={{
-          background: 'rgba(239,68,68,0.12)', border: '1.5px solid rgba(239,68,68,0.5)',
-          borderRadius: '12px', padding: '12px 16px', marginBottom: '20px',
+          background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.45)',
+          borderRadius: '12px', padding: '13px 15px', marginBottom: '20px',
           display: 'flex', alignItems: 'center', gap: '12px',
         }}>
-          <span style={{ fontSize: '20px' }}>⏱</span>
-          <div>
-            <p style={{ margin: 0, fontWeight: '800', fontSize: '15px', color: '#ef4444' }}>
+          <span style={{
+            width: '34px', height: '34px', borderRadius: '9px', flexShrink: 0,
+            background: 'rgba(245,158,11,0.16)', display: 'grid', placeItems: 'center', fontSize: '17px',
+          }}>⏱</span>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: 0, fontWeight: '800', fontSize: '14px', color: 'var(--text)' }}>
               Queue in {queueAlert.mins} min — {queueAlert.name}
             </p>
-            <p style={{ margin: 0, fontSize: '12px', color: 'rgba(239,68,68,0.75)' }}>
+            <p style={{ margin: '1px 0 0', fontSize: '12px', color: '#f59e0b', fontWeight: '600' }}>
               Head to the queuing area now
             </p>
           </div>
@@ -308,10 +310,11 @@ function MatchCard({ match, myNumber, isNext, activeTeam, onToggleTeam, entries 
 
   return (
     <div style={{
-      background: 'var(--surface)',
-      border: `1.5px solid ${isNext ? 'var(--accent)' : 'var(--border)'}`,
+      background: isNext ? 'rgba(204,0,0,0.08)' : 'var(--surface)',
+      border: '1px solid var(--border)',
       borderRadius: '12px',
       overflow: 'hidden',
+      boxShadow: isNext ? 'inset 3px 0 0 var(--accent)' : 'none',
     }}>
       {/* Match header row */}
       <div style={{ padding: '10px 14px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -460,15 +463,22 @@ function ScoutRow({ entry }) {
   const INTAKE = { strong: 'Strong', okay: 'Okay', weak: 'Weak', none: 'None' }
   const SCORE  = { fast: 'Fast', average: 'Average', slow: 'Slow', cant_tell: '?' }
   const tags = [DRIVE[entry.drivetrain], INTAKE[entry.intake], SCORE[entry.scoring]].filter(Boolean)
-  const stars = entry.reliability
-    ? '★'.repeat(entry.reliability) + '☆'.repeat(5 - entry.reliability)
-    : null
+  const rel = entry.reliability
 
   return (
-    <div style={{ fontSize: '13px' }}>
-      {tags.length > 0 && <span style={{ color: 'var(--text-muted)' }}>{tags.join(' · ')}</span>}
-      {stars && <span style={{ color: '#f59e0b', marginLeft: '8px', fontSize: '11px', letterSpacing: '1px' }}>{stars}</span>}
-      {entry.note && <span style={{ marginLeft: '8px', color: 'var(--text-muted)', fontStyle: 'italic' }}>{entry.note}</span>}
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px' }}>
+      <span style={{ flex: 1, minWidth: 0, color: 'var(--text-muted)' }}>
+        {tags.join(' · ')}
+        {entry.note && <span style={{ fontStyle: 'italic' }}> · {entry.note}</span>}
+      </span>
+      {rel != null && (
+        <span style={{ display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0 }}>
+          <span style={{ width: '34px', height: '5px', borderRadius: '3px', background: 'var(--surface-2)', overflow: 'hidden' }}>
+            <span style={{ display: 'block', height: '100%', width: `${(rel / 5) * 100}%`, background: relColor(rel), borderRadius: '3px' }} />
+          </span>
+          <span style={{ fontWeight: '800', fontSize: '12px', width: '14px', textAlign: 'right' }}>{rel}</span>
+        </span>
+      )}
     </div>
   )
 }
@@ -513,8 +523,7 @@ function VexStatsSummary({ stats }) {
 function Gate({ message, action, onAction }) {
   return (
     <div style={{ padding: '24px 16px', maxWidth: '560px', margin: '0 auto' }}>
-      <p style={sectionLabel}>VERALIS</p>
-      <h1 style={{ margin: '4px 0 24px', fontSize: '26px', fontWeight: '800' }}>Live Event Mode</h1>
+      <h1 style={{ margin: '0 0 24px', fontSize: '26px', fontWeight: '800' }}>Live Event Mode</h1>
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '28px 20px', textAlign: 'center' }}>
         <p style={{ color: 'var(--text-muted)', margin: '0 0 20px', fontSize: '15px', lineHeight: 1.5 }}>{message}</p>
         <button
@@ -540,11 +549,16 @@ function formatMatchTime(scheduled) {
       d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
 
+// Reliability (1–5) → semantic colour, kept distinct from the red brand accent.
+function relColor(r) {
+  return r >= 4 ? '#22c55e' : r === 3 ? '#f59e0b' : '#ef4444'
+}
+
 const sectionLabel = {
-  margin: '0 0 6px',
+  margin: '0 0 10px',
   color: 'var(--text-muted)',
-  fontSize: '11px',
-  fontWeight: '600',
-  letterSpacing: '0.08em',
+  fontSize: '12px',
+  fontWeight: '700',
+  letterSpacing: '0.09em',
   textTransform: 'uppercase',
 }
