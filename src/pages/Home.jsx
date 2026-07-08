@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTeam } from '../hooks/useTeam'
 import { useScoutingEntries } from '../hooks/useScoutingEntries'
 import { useEvent } from '../hooks/useEvent'
+import { useOnlineStatus } from '../hooks/useOnlineStatus'
+import { useMediaQuery } from '../hooks/useMediaQuery'
 import { getTeamEvents, getTeam, getTeamStats } from '../lib/vexApi'
 
 export default function Home() {
@@ -158,7 +160,8 @@ function EventPicker({ teamNumber, onSelect }) {
 
 function MatchSchedule({ event, team, matches, loading, error, entries, onChangeEvent }) {
   const [activeTeam, setActiveTeam] = useState(null) // { number, matchId }
-  const [queueAlert, setQueueAlert] = useState(null)
+  const isDesktop = useMediaQuery('(min-width: 900px)')
+  const online = useOnlineStatus()
 
   const myNumber = team.team_number?.toUpperCase()
 
@@ -170,23 +173,15 @@ function MatchSchedule({ event, team, matches, loading, error, entries, onChange
     .filter(m => m.scored)
     .sort((a, b) => (b.scheduled ?? '').localeCompare(a.scheduled ?? ''))
 
-  // 5-min queue alert — re-checks every 30 s
-  useEffect(() => {
-    function check() {
-      for (const m of upcoming) {
-        if (!m.scheduled) continue
-        const mins = (new Date(m.scheduled) - Date.now()) / 60000
-        if (mins > 0 && mins <= 5) {
-          setQueueAlert({ name: m.name ?? `Match ${m.matchnum}`, mins: Math.ceil(mins) })
-          return
-        }
-      }
-      setQueueAlert(null)
-    }
-    check()
-    const id = setInterval(check, 30000)
-    return () => clearInterval(id)
-  }, [upcoming])
+  // Real scouting stats derived from this team's entries — no fabricated numbers.
+  const pending = entries.filter(e => !e._synced)
+  const reports = entries.length
+  const teamsScouted = new Set(
+    entries.map(e => (e.scouted_team_number ?? e.teamNumber)?.toUpperCase()).filter(Boolean)
+  ).size
+  const scoutsToday = new Set(
+    entries.filter(e => isToday(e.created_at)).map(e => e.created_by).filter(Boolean)
+  ).size
 
   function toggleTeam(teamNumber, matchId) {
     setActiveTeam(prev =>
@@ -194,23 +189,71 @@ function MatchSchedule({ event, team, matches, loading, error, entries, onChange
     )
   }
 
-  return (
-    <div style={{ padding: '20px 16px 80px', maxWidth: '560px', margin: '0 auto' }}>
+  const matchesBlock = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      {loading && <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Loading schedule…</p>}
+      {error && <p style={{ color: '#ef4444', fontSize: '14px' }}>Failed to load: {error}</p>}
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px', gap: '12px' }}>
+      {!loading && upcoming.length > 0 && (
         <div>
+          <p style={sectionLabel}>Next matches</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {upcoming.map((m, i) => (
+              <MatchCard key={m.id} match={m} myNumber={myNumber} isNext={i === 0}
+                activeTeam={activeTeam} onToggleTeam={toggleTeam} entries={entries} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!loading && past.length > 0 && (
+        <div>
+          <p style={sectionLabel}>Results</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {past.map(m => (
+              <MatchCard key={m.id} match={m} myNumber={myNumber} isNext={false}
+                activeTeam={activeTeam} onToggleTeam={toggleTeam} entries={entries} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!loading && !error && matches.length === 0 && (
+        <div style={{ ...card, padding: '28px 20px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '14px', lineHeight: 1.6 }}>
+            No matches found for team {myNumber} at this event.<br />
+            Matches may not be posted yet.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+
+  const queueBlock = <QueueHero upcoming={upcoming} />
+  const snapshotBlock = <TeamSnapshot reports={reports} teamsScouted={teamsScouted} scoutsToday={scoutsToday} />
+  const recentBlock = <RecentScouting entries={entries} />
+  const offlineBlock = <OfflineQueue pending={pending} online={online} />
+  const lookupBlock = <QuickLookup entries={entries} />
+
+  return (
+    <div className="home-dash">
+      {/* Header (no top nav, no brand wordmark) */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '18px', gap: '12px' }}>
+        <div style={{ minWidth: 0 }}>
           <p style={sectionLabel}>Live event</p>
-          <h1 style={{ margin: '2px 0 2px', fontSize: '20px', fontWeight: '800', lineHeight: 1.2 }}>
+          <h1 style={{ margin: '2px 0 8px', fontSize: '22px', fontWeight: '800', lineHeight: 1.2 }}>
             {event.name}
           </h1>
-          <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>Team {myNumber}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Team {myNumber}</span>
+            <StatusPill online={online} pending={pending.length} />
+          </div>
         </div>
         <button
           onClick={onChangeEvent}
           style={{
             flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border)',
-            color: 'var(--text-muted)', borderRadius: '8px', padding: '6px 12px',
+            color: 'var(--text-muted)', borderRadius: '8px', padding: '8px 12px',
             fontSize: '12px', cursor: 'pointer',
           }}
         >
@@ -218,80 +261,209 @@ function MatchSchedule({ event, team, matches, loading, error, entries, onChange
         </button>
       </div>
 
-      {/* Queue alert banner */}
-      {queueAlert && (
-        <div style={{
-          background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.45)',
-          borderRadius: '12px', padding: '13px 15px', marginBottom: '20px',
-          display: 'flex', alignItems: 'center', gap: '12px',
-        }}>
-          <span style={{
-            width: '34px', height: '34px', borderRadius: '9px', flexShrink: 0,
-            background: 'rgba(245,158,11,0.16)', display: 'grid', placeItems: 'center', fontSize: '17px',
-          }}>⏱</span>
-          <div style={{ minWidth: 0 }}>
-            <p style={{ margin: 0, fontWeight: '800', fontSize: '14px', color: 'var(--text)' }}>
-              Queue in {queueAlert.mins} min — {queueAlert.name}
+      {isDesktop ? (
+        <div className="home-grid">
+          <div className="home-col">{matchesBlock}{recentBlock}{offlineBlock}</div>
+          <div className="home-col">{queueBlock}{snapshotBlock}{lookupBlock}</div>
+        </div>
+      ) : (
+        <div className="home-grid">
+          {queueBlock}{matchesBlock}{snapshotBlock}{recentBlock}{offlineBlock}{lookupBlock}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Online / pending status pill ──────────────────────────────────────────────
+
+function StatusPill({ online, pending }) {
+  const color = online ? '#22c55e' : '#f59e0b'
+  const bg = online ? 'rgba(34,197,94,0.12)' : 'rgba(245,158,11,0.12)'
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 9px', borderRadius: '999px', background: bg, color, fontSize: '11px', fontWeight: '700' }}>
+      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: color }} />
+      {online ? 'Online' : 'Offline'}{pending > 0 ? ` · ${pending} pending` : ''}
+    </span>
+  )
+}
+
+// ── Time to Queue (live countdown to the next scheduled match) ─────────────────
+
+function QueueHero({ upcoming }) {
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  const next = upcoming.find(m => m.scheduled && new Date(m.scheduled).getTime() > now)
+  const totalSec = next ? Math.max(0, Math.floor((new Date(next.scheduled).getTime() - now) / 1000)) : null
+  const urgent = totalSec != null && totalSec <= 300
+
+  let display = '—'
+  if (totalSec != null) {
+    if (totalSec >= 3600) {
+      display = `${Math.floor(totalSec / 3600)}h ${Math.floor((totalSec % 3600) / 60)}m`
+    } else {
+      const m = Math.floor(totalSec / 60), s = totalSec % 60
+      display = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    }
+  }
+
+  return (
+    <div style={card}>
+      <div style={{ textAlign: 'center', padding: '22px 18px', background: next ? 'radial-gradient(120% 90% at 50% -10%, rgba(204,0,0,0.10), transparent 70%)' : 'transparent' }}>
+        <p style={{ ...cardTitle, margin: 0 }}>Time to Queue</p>
+        {next ? (
+          <>
+            <p style={{ margin: '8px 0 4px', fontSize: '54px', fontWeight: '800', color: 'var(--accent)', lineHeight: 1.02, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{display}</p>
+            {urgent && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '8px', padding: '4px 11px', borderRadius: '999px', background: 'rgba(245,158,11,0.14)', color: '#f59e0b', fontWeight: '700', fontSize: '11.5px' }}>⚠ Leave now</span>
+            )}
+            <p style={{ margin: '6px auto 0', color: 'var(--text-muted)', fontSize: '13px', maxWidth: '30ch' }}>
+              Head to the field queue for <b style={{ color: 'var(--text)' }}>{next.name ?? `Match ${next.matchnum}`}</b>.
             </p>
-            <p style={{ margin: '1px 0 0', fontSize: '12px', color: '#f59e0b', fontWeight: '600' }}>
-              Head to the queuing area now
-            </p>
+          </>
+        ) : (
+          <p style={{ margin: '12px 0 2px', color: 'var(--text-muted)', fontSize: '14px' }}>No upcoming matches.</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Team snapshot (real scouting stats) ───────────────────────────────────────
+
+function TeamSnapshot({ reports, teamsScouted, scoutsToday }) {
+  const stats = [
+    [reports, 'Reports'],
+    [teamsScouted, 'Teams scouted'],
+    [scoutsToday, 'Scouts today'],
+  ]
+  return (
+    <div style={card}>
+      <div style={cardHead}><span style={cardTitle}>Team Snapshot</span></div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
+        {stats.map(([n, l], i) => (
+          <div key={l} style={{ textAlign: 'center', padding: '16px 6px', borderLeft: i === 0 ? 'none' : '1px solid var(--border)' }}>
+            <p style={{ margin: 0, fontSize: '26px', fontWeight: '800', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{n}</p>
+            <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: 'var(--text-muted)' }}>{l}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Recent scouting (latest reports) ──────────────────────────────────────────
+
+function RecentScouting({ entries }) {
+  const recent = [...entries]
+    .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+    .slice(0, 3)
+  if (recent.length === 0) return null
+  return (
+    <div style={card}>
+      <div style={cardHead}>
+        <span style={cardTitle}>Recent Scouting</span>
+        <Link to="/my-team" style={cardLink}>View all</Link>
+      </div>
+      <div>
+        {recent.map((e, i) => <RecentScoutRow key={e.id ?? e._local_id ?? i} entry={e} first={i === 0} />)}
+      </div>
+    </div>
+  )
+}
+
+function RecentScoutRow({ entry, first }) {
+  const team = (entry.scouted_team_number ?? entry.teamNumber ?? '?').toUpperCase()
+  const tags = scoutTags(entry)
+  const rel = entry.reliability
+  return (
+    <Link to={`/search?q=${encodeURIComponent(team)}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '11px 15px', textDecoration: 'none', color: 'inherit', borderTop: first ? 'none' : '1px solid var(--border)' }}>
+      <span style={{ fontWeight: '800', fontSize: '14px', width: '52px', flexShrink: 0 }}>{team}</span>
+      <span style={{ flex: 1, minWidth: 0, color: 'var(--text-muted)', fontSize: '12.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {tags.join(' · ') || 'Scouting report'}
+      </span>
+      {rel != null && <RelMeter rel={rel} />}
+    </Link>
+  )
+}
+
+// ── Offline queue (pending localStorage entries) ──────────────────────────────
+
+function OfflineQueue({ pending, online }) {
+  return (
+    <div style={card}>
+      <div style={cardHead}>
+        <span style={cardTitle}>Offline Queue</span>
+        <span style={{ ...cardTitle, color: 'var(--text-muted)' }}>{pending.length} waiting</span>
+      </div>
+      {pending.length === 0 ? (
+        <div style={{ padding: '18px 15px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '13px' }}>
+          <span style={{ color: '#22c55e', fontWeight: '800' }}>✓</span> All caught up — nothing waiting to sync.
+        </div>
+      ) : (
+        <div>
+          {pending.slice(0, 4).map((e, i) => (
+            <div key={e._local_id ?? e.id ?? i} style={{ padding: '11px 15px', borderTop: i === 0 ? 'none' : '1px solid var(--border)' }}>
+              <p style={{ margin: 0, fontWeight: '700', fontSize: '13px' }}>
+                {(e.scouted_team_number ?? e.teamNumber ?? '?').toUpperCase()}
+                <span style={{ color: 'var(--text-muted)', fontWeight: '600' }}> · saved {timeAgo(e.created_at)}</span>
+              </p>
+              <p style={{ margin: '1px 0 0', color: 'var(--text-muted)', fontSize: '12px' }}>{scoutTags(e).join(', ') || 'Scouting report'}</p>
+            </div>
+          ))}
+          <div style={{ padding: '11px 15px', borderTop: '1px solid var(--border)', color: 'var(--text-muted)', fontSize: '12px' }}>
+            {online ? 'Syncing…' : "Syncs automatically when you're back online."}
           </div>
         </div>
       )}
+    </div>
+  )
+}
 
-      {loading && <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Loading schedule…</p>}
-      {error && <p style={{ color: '#ef4444', fontSize: '14px' }}>Failed to load: {error}</p>}
+// ── Quick lookup (entry point into Search) ────────────────────────────────────
 
-      {/* Upcoming */}
-      {!loading && upcoming.length > 0 && (
-        <>
-          <p style={sectionLabel}>Upcoming matches</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '28px' }}>
-            {upcoming.map((m, i) => (
-              <MatchCard
-                key={m.id}
-                match={m}
-                myNumber={myNumber}
-                isNext={i === 0}
-                activeTeam={activeTeam}
-                onToggleTeam={toggleTeam}
-                entries={entries}
-              />
-            ))}
-          </div>
-        </>
-      )}
+function QuickLookup({ entries }) {
+  const navigate = useNavigate()
+  const [q, setQ] = useState('')
+  const recentTeams = [...new Set(
+    [...entries]
+      .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+      .map(e => (e.scouted_team_number ?? e.teamNumber)?.toUpperCase())
+      .filter(Boolean)
+  )].slice(0, 4)
 
-      {/* Results */}
-      {!loading && past.length > 0 && (
-        <>
-          <p style={sectionLabel}>Results</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {past.map(m => (
-              <MatchCard
-                key={m.id}
-                match={m}
-                myNumber={myNumber}
-                isNext={false}
-                activeTeam={activeTeam}
-                onToggleTeam={toggleTeam}
-                entries={entries}
-              />
-            ))}
-          </div>
-        </>
-      )}
+  function submit(e) {
+    e.preventDefault()
+    const v = q.trim()
+    if (v) navigate(`/search?q=${encodeURIComponent(v)}`)
+  }
 
-      {!loading && !error && matches.length === 0 && (
-        <div style={{
-          background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: '12px', padding: '28px 20px', textAlign: 'center',
-        }}>
-          <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '14px', lineHeight: 1.6 }}>
-            No matches found for team {myNumber} at this event.<br />
-            Matches may not be posted yet.
-          </p>
+  return (
+    <div style={card}>
+      <div style={cardHead}><span style={cardTitle}>Quick Lookup</span></div>
+      <form onSubmit={submit} style={{ padding: '13px 15px 6px' }}>
+        <input
+          value={q}
+          onChange={e => setQ(e.target.value)}
+          placeholder="Search a team or event…"
+          style={{ width: '100%', height: '42px', padding: '0 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: '14px', boxSizing: 'border-box' }}
+        />
+      </form>
+      {recentTeams.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '8px 15px 15px' }}>
+          {recentTeams.map(t => (
+            <button
+              key={t}
+              onClick={() => navigate(`/search?q=${encodeURIComponent(t)}`)}
+              style={{ fontSize: '12px', fontWeight: '700', padding: '5px 10px', borderRadius: '8px', background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer' }}
+            >
+              {t}
+            </button>
+          ))}
         </div>
       )}
     </div>
@@ -459,10 +631,7 @@ function TeamSummary({ teamNumber, entries, onClose }) {
 // ── Scout row (scouting summary in the panel) ─────────────────────────────────
 
 function ScoutRow({ entry }) {
-  const DRIVE  = { tank: 'Tank', mecanum: 'Mecanum', xdrive: 'X-drive', other: 'Other' }
-  const INTAKE = { strong: 'Strong', okay: 'Okay', weak: 'Weak', none: 'None' }
-  const SCORE  = { fast: 'Fast', average: 'Average', slow: 'Slow', cant_tell: '?' }
-  const tags = [DRIVE[entry.drivetrain], INTAKE[entry.intake], SCORE[entry.scoring]].filter(Boolean)
+  const tags = scoutTags(entry)
   const rel = entry.reliability
 
   return (
@@ -471,14 +640,7 @@ function ScoutRow({ entry }) {
         {tags.join(' · ')}
         {entry.note && <span style={{ fontStyle: 'italic' }}> · {entry.note}</span>}
       </span>
-      {rel != null && (
-        <span style={{ display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0 }}>
-          <span style={{ width: '34px', height: '5px', borderRadius: '3px', background: 'var(--surface-2)', overflow: 'hidden' }}>
-            <span style={{ display: 'block', height: '100%', width: `${(rel / 5) * 100}%`, background: relColor(rel), borderRadius: '3px' }} />
-          </span>
-          <span style={{ fontWeight: '800', fontSize: '12px', width: '14px', textAlign: 'right' }}>{rel}</span>
-        </span>
-      )}
+      {rel != null && <RelMeter rel={rel} />}
     </div>
   )
 }
@@ -561,4 +723,45 @@ const sectionLabel = {
   fontWeight: '700',
   letterSpacing: '0.09em',
   textTransform: 'uppercase',
+}
+
+// Shared dashboard card primitives (mirrors the approved mockup's card system).
+const card = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }
+const cardHead = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 15px', borderBottom: '1px solid var(--border)' }
+const cardTitle = { fontSize: '11.5px', fontWeight: '700', letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--text-muted)' }
+const cardLink = { fontSize: '11.5px', fontWeight: '700', color: 'var(--accent)', textDecoration: 'none' }
+
+// Human-readable scouting tags from a raw entry (shared by ScoutRow, RecentScoutRow, OfflineQueue).
+function scoutTags(entry) {
+  const DRIVE  = { tank: 'Tank', mecanum: 'Mecanum', xdrive: 'X-drive', other: 'Other' }
+  const INTAKE = { strong: 'Strong', okay: 'Okay', weak: 'Weak', none: 'None' }
+  const SCORE  = { fast: 'Fast', average: 'Average', slow: 'Slow', cant_tell: '?' }
+  return [DRIVE[entry.drivetrain], INTAKE[entry.intake], SCORE[entry.scoring]].filter(Boolean)
+}
+
+function isToday(iso) {
+  if (!iso) return false
+  const d = new Date(iso)
+  return !isNaN(d) && d.toDateString() === new Date().toDateString()
+}
+
+function timeAgo(iso) {
+  if (!iso) return 'just now'
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+  if (s < 60) return 'just now'
+  const m = Math.floor(s / 60); if (m < 60) return `${m} min ago`
+  const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
+}
+
+// Compact reliability meter (1–5) with a semantic fill colour.
+function RelMeter({ rel }) {
+  return (
+    <span style={{ display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0 }}>
+      <span style={{ width: '34px', height: '5px', borderRadius: '3px', background: 'var(--surface-2)', overflow: 'hidden' }}>
+        <span style={{ display: 'block', height: '100%', width: `${(rel / 5) * 100}%`, background: relColor(rel), borderRadius: '3px' }} />
+      </span>
+      <span style={{ fontWeight: '800', fontSize: '12px', width: '14px', textAlign: 'right' }}>{rel}</span>
+    </span>
+  )
 }
