@@ -9,18 +9,35 @@ import { useState } from 'react'
 const OFFICIAL_MANUAL_URL = 'https://link.vex.com/docs/26-27/v5rc/game-manual'
 
 export default function GameRules() {
+  const [tab, setTab] = useState('rules')
   return (
     <div style={{ padding: '20px 16px 80px', maxWidth: '560px', margin: '0 auto' }}>
 
       {/* Header */}
-      <p style={sectionLabel}>VERALIS · GAME RULES</p>
+      <p style={sectionLabel}>VERALIS · GAME</p>
       <h1 style={{ margin: '2px 0 2px', fontSize: '26px', fontWeight: '800', lineHeight: 1.15 }}>
         Override
       </h1>
-      <p style={{ margin: '0 0 20px', color: 'var(--text-muted)', fontSize: '14px' }}>
+      <p style={{ margin: '0 0 16px', color: 'var(--text-muted)', fontSize: '14px' }}>
         VEX V5 Robotics Competition · 2026–2027 season
       </p>
 
+      {/* Tab toggle */}
+      <div style={segWrap}>
+        <SegBtn active={tab === 'rules'} onClick={() => setTab('rules')}>Rules</SegBtn>
+        <SegBtn active={tab === 'calc'} onClick={() => setTab('calc')}>Calculator</SegBtn>
+      </div>
+
+      {tab === 'calc' ? <ScoreCalculator /> : <RulesView />}
+    </div>
+  )
+}
+
+// ── Rules reference ───────────────────────────────────────────────────────────
+
+function RulesView() {
+  return (
+    <>
       {/* At-a-glance strip */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '18px', flexWrap: 'wrap' }}>
         <Stat label="Field" value="12′ × 12′" />
@@ -140,7 +157,194 @@ export default function GameRules() {
         Robotics or Innovation First, Inc. “VEX”, “V5RC”, and “Override” are trademarks of their
         respective owners.
       </p>
+    </>
+  )
+}
+
+// ── Score calculator ──────────────────────────────────────────────────────────
+// A full-match calculator: both alliances at once, with a live winner + margin.
+// Models Override scoring — alliance Pins ×5, owned yellow Pins ×10, Midfield
+// robots ×8, plus the 12-pt Autonomous Bonus (6/6 on a tie). Pure arithmetic,
+// no manual text reproduced. It's a strategy helper, not an official scorer.
+
+const PTS = { pins: 5, yellow: 10, mid: 8 }
+const ALLIANCE = {
+  red:  { name: 'Red Alliance',  color: '#ef4444', tint: 'rgba(239,68,68,0.09)', line: 'rgba(239,68,68,0.35)' },
+  blue: { name: 'Blue Alliance', color: '#3b82f6', tint: 'rgba(59,130,246,0.09)', line: 'rgba(59,130,246,0.35)' },
+}
+
+function allianceScore(v, autonPts) {
+  return v.pins * PTS.pins + v.yellow * PTS.yellow + v.mid * PTS.mid + autonPts
+}
+
+function ScoreCalculator() {
+  const [red, setRed] = useState({ pins: 0, yellow: 0, mid: 0 })
+  const [blue, setBlue] = useState({ pins: 0, yellow: 0, mid: 0 })
+  const [auton, setAuton] = useState('none') // 'red' | 'tie' | 'blue' | 'none'
+
+  const redAuton = auton === 'red' ? 12 : auton === 'tie' ? 6 : 0
+  const blueAuton = auton === 'blue' ? 12 : auton === 'tie' ? 6 : 0
+  const redTotal = allianceScore(red, redAuton)
+  const blueTotal = allianceScore(blue, blueAuton)
+  const winner = redTotal > blueTotal ? 'red' : blueTotal > redTotal ? 'blue' : 'tie'
+  const margin = Math.abs(redTotal - blueTotal)
+
+  const touched = redTotal > 0 || blueTotal > 0
+
+  function reset() {
+    setRed({ pins: 0, yellow: 0, mid: 0 })
+    setBlue({ pins: 0, yellow: 0, mid: 0 })
+    setAuton('none')
+  }
+
+  return (
+    <>
+      {/* Live result */}
+      <div style={{ ...card, marginBottom: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'stretch', padding: '16px 12px' }}>
+          <TotalBlock label="Red" value={redTotal} color={ALLIANCE.red.color} winning={winner === 'red'} />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '72px', gap: '4px' }}>
+            <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              {winner === 'tie' ? 'Result' : 'Margin'}
+            </span>
+            <span style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)' }}>
+              {winner === 'tie' ? '—' : `+${margin}`}
+            </span>
+          </div>
+          <TotalBlock label="Blue" value={blueTotal} color={ALLIANCE.blue.color} winning={winner === 'blue'} />
+        </div>
+        <div style={{
+          padding: '9px', textAlign: 'center', borderTop: '1px solid var(--border)',
+          fontSize: '13px', fontWeight: '700',
+          color: winner === 'tie' ? 'var(--text-muted)' : ALLIANCE[winner].color,
+        }}>
+          {!touched ? 'Enter counts to project a match' : winner === 'tie' ? `Tied at ${redTotal}` : `${ALLIANCE[winner].name} wins by ${margin}`}
+        </div>
+      </div>
+
+      {/* Autonomous Bonus */}
+      <div style={{ ...card, padding: '14px 16px' }}>
+        <p style={{ ...sectionLabel, margin: '0 0 4px', color: 'var(--accent)' }}>Autonomous Bonus</p>
+        <p style={{ ...callout, margin: '0 0 10px' }}>
+          12 points to whichever alliance leads after the 15-second auton period — 6 each on a tie.
+        </p>
+        <div style={{ ...segWrap, marginBottom: 0 }}>
+          <SegBtn active={auton === 'red'} onClick={() => setAuton('red')} color={ALLIANCE.red.color}>Red +12</SegBtn>
+          <SegBtn active={auton === 'tie'} onClick={() => setAuton('tie')}>Tie 6·6</SegBtn>
+          <SegBtn active={auton === 'blue'} onClick={() => setAuton('blue')} color={ALLIANCE.blue.color}>Blue +12</SegBtn>
+          <SegBtn active={auton === 'none'} onClick={() => setAuton('none')}>None</SegBtn>
+        </div>
+      </div>
+
+      <AlliancePanel side="red" v={red} onChange={setRed} autonPts={redAuton} />
+      <AlliancePanel side="blue" v={blue} onChange={setBlue} autonPts={blueAuton} />
+
+      <button
+        type="button"
+        onClick={reset}
+        style={{
+          width: '100%', marginTop: '4px', padding: '11px', cursor: 'pointer',
+          background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '10px',
+          color: 'var(--text-muted)', fontFamily: 'inherit', fontSize: '13px', fontWeight: '600',
+        }}
+      >
+        Reset all
+      </button>
+
+      <p style={{ ...noteText, textAlign: 'center', margin: '14px 4px 0' }}>
+        Unofficial strategy helper — yellow Pins only count when your alliance owns them (via the
+        quadrant Toggle or the Midfield). Always confirm final scores with the head referee.
+      </p>
+    </>
+  )
+}
+
+function TotalBlock({ label, value, color, winning }) {
+  return (
+    <div style={{ flex: 1, textAlign: 'center', opacity: winning || value === 0 ? 1 : 0.75 }}>
+      <span style={{ display: 'block', fontSize: '11px', fontWeight: '800', color, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        {label}
+      </span>
+      <span style={{ display: 'block', fontSize: '34px', fontWeight: '800', color, lineHeight: 1.1 }}>
+        {value}
+      </span>
     </div>
+  )
+}
+
+function AlliancePanel({ side, v, onChange, autonPts }) {
+  const a = ALLIANCE[side]
+  const subtotal = allianceScore(v, autonPts)
+  const set = (key) => (n) => onChange({ ...v, [key]: n })
+  return (
+    <div style={{ ...card, borderColor: a.line, background: a.tint }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px 8px' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '800', color: a.color }}>
+          <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: a.color }} />
+          {a.name}
+        </span>
+        <span style={{ fontSize: '18px', fontWeight: '800', color: a.color }}>{subtotal}</span>
+      </div>
+      <div style={{ padding: '0 16px 6px' }}>
+        <Stepper label="Alliance Pins" mult={PTS.pins} value={v.pins} onChange={set('pins')} accent={a.color} />
+        <Stepper label="Yellow Pins (owned)" mult={PTS.yellow} value={v.yellow} onChange={set('yellow')} accent={a.color} />
+        <Stepper label="Robots in Midfield" mult={PTS.mid} value={v.mid} onChange={set('mid')} accent={a.color} max={2} last />
+      </div>
+      {autonPts > 0 && (
+        <div style={{ padding: '8px 16px 12px', fontSize: '12px', color: 'var(--text-muted)' }}>
+          + {autonPts} Autonomous Bonus
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Stepper({ label, mult, value, onChange, accent, max = 99, last }) {
+  const btn = (disabled) => ({
+    width: '34px', height: '34px', flexShrink: 0, borderRadius: '8px', cursor: disabled ? 'default' : 'pointer',
+    border: `1.5px solid ${disabled ? 'var(--border)' : accent}`,
+    background: 'transparent', color: disabled ? 'var(--text-muted)' : accent,
+    fontSize: '20px', fontWeight: '700', lineHeight: 1, fontFamily: 'inherit',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    opacity: disabled ? 0.4 : 1,
+  })
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+      padding: '9px 0', borderBottom: last ? 'none' : '1px solid var(--border)',
+    }}>
+      <div>
+        <span style={{ display: 'block', fontSize: '14px', color: 'var(--text)' }}>{label}</span>
+        <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginTop: '1px' }}>
+          {mult} pts each{value > 0 ? ` · ${value * mult}` : ''}
+        </span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <button type="button" aria-label={`Decrease ${label}`} disabled={value <= 0} onClick={() => onChange(Math.max(0, value - 1))} style={btn(value <= 0)}>−</button>
+        <span style={{ minWidth: '22px', textAlign: 'center', fontSize: '17px', fontWeight: '800', color: 'var(--text)' }}>{value}</span>
+        <button type="button" aria-label={`Increase ${label}`} disabled={value >= max} onClick={() => onChange(Math.min(max, value + 1))} style={btn(value >= max)}>+</button>
+      </div>
+    </div>
+  )
+}
+
+// ── Segmented control ─────────────────────────────────────────────────────────
+
+function SegBtn({ active, onClick, color, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        flex: 1, padding: '9px 6px', border: 'none', borderRadius: '8px', cursor: 'pointer',
+        fontFamily: 'inherit', fontSize: '13px', fontWeight: active ? '700' : '500',
+        background: active ? (color || 'var(--accent)') : 'transparent',
+        color: active ? '#fff' : 'var(--text-muted)',
+        transition: 'background 0.12s',
+      }}
+    >
+      {children}
+    </button>
   )
 }
 
@@ -260,6 +464,16 @@ const card = {
   borderRadius: '12px',
   marginBottom: '10px',
   overflow: 'hidden',
+}
+
+const segWrap = {
+  display: 'flex',
+  gap: '3px',
+  background: 'var(--surface-2)',
+  border: '1px solid var(--border)',
+  borderRadius: '10px',
+  padding: '3px',
+  marginBottom: '18px',
 }
 
 const p = {
