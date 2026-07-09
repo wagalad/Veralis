@@ -11,6 +11,10 @@ const DRIVETRAIN_LABELS = { tank: 'Tank', mecanum: 'Mecanum', xdrive: 'X-drive',
 const INTAKE_LABELS    = { strong: 'Strong', okay: 'Okay', weak: 'Weak', none: 'None/unsure' }
 const SCORING_LABELS   = { fast: 'Fast', average: 'Average', slow: 'Slow', cant_tell: "Couldn't tell" }
 const AUTO_LABELS      = { strong: 'Strong', works: 'Works', weak_none: 'Weak/none', didnt_see: "Didn't see" }
+const DEFENSE_LABELS   = { folds: 'Folds', handles: 'Handles it', unstoppable: 'Unstoppable', didnt_see: "Didn't see" }
+const DRIVER_LABELS    = { struggles: 'Struggles', decent: 'Decent', skilled: 'Skilled', didnt_see: "Didn't see" }
+const STABILITY_LABELS = { tippy: 'Tippy', solid: 'Solid', rock_solid: 'Rock-solid' }
+const THREAT_META      = { low: { label: 'Low', color: '#22c55e' }, medium: { label: 'Medium', color: '#f59e0b' }, high: { label: 'High', color: '#fb923c' }, must_scout: { label: 'Must-scout', color: 'var(--accent)' } }
 
 export default function Search() {
   const { user } = useAuth()
@@ -907,20 +911,34 @@ function MiniScoutCard({ entry }) {
   const stars = entry.reliability
     ? '★'.repeat(entry.reliability) + '☆'.repeat(5 - entry.reliability)
     : null
+  const threat = THREAT_META[entry.threat_level]
   const tags = [
+    SCORING_LABELS[entry.scoring],
+    DEFENSE_LABELS[entry.under_defense] && `Def: ${DEFENSE_LABELS[entry.under_defense]}`,
+    DRIVER_LABELS[entry.driver_skill] && `Driver: ${DRIVER_LABELS[entry.driver_skill]}`,
+    STABILITY_LABELS[entry.stability],
+    AUTO_LABELS[entry.autonomous] && `Auto: ${AUTO_LABELS[entry.autonomous]}`,
     DRIVETRAIN_LABELS[entry.drivetrain],
     INTAKE_LABELS[entry.intake],
-    SCORING_LABELS[entry.scoring],
-    AUTO_LABELS[entry.autonomous],
   ].filter(Boolean)
 
   return (
     <div style={{
       background: 'var(--surface-2)', borderRadius: '8px', padding: '10px 12px',
-      display: 'flex', flexDirection: 'column', gap: '4px',
+      display: 'flex', flexDirection: 'column', gap: '5px',
     }}>
-      {stars && (
-        <span style={{ color: '#f59e0b', fontSize: '12px', letterSpacing: '1px' }}>{stars}</span>
+      {(threat || stars) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {threat && (
+            <span style={{ fontSize: '11px', fontWeight: '700', color: threat.color, border: `1px solid ${threat.color}`, background: `color-mix(in oklch, ${threat.color} 14%, transparent)`, borderRadius: '999px', padding: '1px 8px' }}>
+              {threat.label} threat
+            </span>
+          )}
+          {stars && <span style={{ color: '#f59e0b', fontSize: '12px', letterSpacing: '1px' }}>{stars}</span>}
+        </div>
+      )}
+      {entry.how_to_play && (
+        <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)' }}>→ {entry.how_to_play}</span>
       )}
       {tags.length > 0 && (
         <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{tags.join(' · ')}</span>

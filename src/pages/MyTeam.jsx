@@ -74,6 +74,11 @@ const DRIVE  = { tank: 'Tank', mecanum: 'Mecanum', xdrive: 'X-drive', other: 'Ot
 const INTAKE = { strong: 'Strong intake', okay: 'Okay intake', weak: 'Weak intake', none: 'No intake' }
 const SCORE  = { fast: 'Fast scoring', average: 'Avg scoring', slow: 'Slow scoring', cant_tell: 'Scoring ?' }
 const AUTO   = { strong: 'Strong auto', works: 'Auto works', weak_none: 'Weak/no auto', didnt_see: 'Auto unseen' }
+// Eye-test fields
+const THREAT    = { low: { label: 'Low', color: '#22c55e' }, medium: { label: 'Medium', color: '#f59e0b' }, high: { label: 'High', color: '#fb923c' }, must_scout: { label: 'Must-scout', color: 'var(--accent)' } }
+const DEFENSE   = { folds: 'Folds', handles: 'Handles it', unstoppable: 'Unstoppable', didnt_see: "Didn't see" }
+const DRIVER    = { struggles: 'Struggles', decent: 'Decent', skilled: 'Skilled', didnt_see: "Didn't see" }
+const STABILITY = { tippy: 'Tippy', solid: 'Solid', rock_solid: 'Rock-solid' }
 
 function timeAgo(iso) {
   const d = new Date(iso)
@@ -206,8 +211,9 @@ function ScoutingLog({ team, getMembers, currentUserId, onScout }) {
 }
 
 function EntryRow({ entry, scout, open, onToggle }) {
-  const tags = [DRIVE[entry.drivetrain], INTAKE[entry.intake], SCORE[entry.scoring]].filter(Boolean)
+  const threat = THREAT[entry.threat_level]
   const stars = entry.reliability ? '★'.repeat(entry.reliability) + '☆'.repeat(5 - entry.reliability) : null
+  const summary = [SCORE[entry.scoring], entry.how_to_play].filter(Boolean)
 
   return (
     <div style={{ background: 'var(--surface-2)', borderRadius: '10px', overflow: 'hidden' }}>
@@ -228,10 +234,22 @@ function EntryRow({ entry, scout, open, onToggle }) {
           <span style={{ fontSize: '11px', color: 'var(--text-muted)', flexShrink: 0 }}>{timeAgo(entry.created_at)}</span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
-          {tags.length > 0 && <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{tags.join(' · ')}</span>}
-          {stars && <span style={{ fontSize: '11px', color: '#f59e0b', letterSpacing: '1px' }}>{stars}</span>}
-        </div>
+        {(threat || stars) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
+            {threat && (
+              <span style={{ fontSize: '11px', fontWeight: '700', color: threat.color, border: `1px solid ${threat.color}`, background: `color-mix(in oklch, ${threat.color} 14%, transparent)`, borderRadius: '999px', padding: '1px 8px' }}>
+                {threat.label} threat
+              </span>
+            )}
+            {stars && <span style={{ fontSize: '11px', color: '#f59e0b', letterSpacing: '1px' }}>{stars}</span>}
+          </div>
+        )}
+
+        {summary.length > 0 && (
+          <p style={{ margin: '5px 0 0', fontSize: '12px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {summary.join(' · ')}
+          </p>
+        )}
 
         {!open && entry.note && (
           <p style={{ margin: '5px 0 0', fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -242,11 +260,16 @@ function EntryRow({ entry, scout, open, onToggle }) {
 
       {open && (
         <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <DetailRow k="Drivetrain" v={DRIVE[entry.drivetrain]} />
-          <DetailRow k="Intake" v={INTAKE[entry.intake]} />
+          <DetailRow k="Threat" v={threat?.label} />
           <DetailRow k="Scoring" v={SCORE[entry.scoring]} />
+          <DetailRow k="Under defense" v={DEFENSE[entry.under_defense]} />
+          <DetailRow k="Driver skill" v={DRIVER[entry.driver_skill]} />
+          <DetailRow k="Stability" v={STABILITY[entry.stability]} />
           <DetailRow k="Autonomous" v={AUTO[entry.autonomous]} />
           <DetailRow k="Reliability" v={entry.reliability ? `${entry.reliability}/5` : null} />
+          <DetailRow k="How to play" v={entry.how_to_play} />
+          <DetailRow k="Drivetrain" v={DRIVE[entry.drivetrain]} />
+          <DetailRow k="Intake" v={INTAKE[entry.intake]} />
           {entry.photo_url && <DetailRow k="Photo" v="Attached" />}
           {entry.note && (
             <div style={{ marginTop: '2px' }}>
