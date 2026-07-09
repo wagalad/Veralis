@@ -191,11 +191,12 @@ export default function Scout() {
             </button>
           </Field>
 
-          <Field label="One-word note" optional>
-            <input type="text" value={form.note} onChange={e => setField('note', e.target.value)}
-              placeholder="e.g. consistent, fragile, speedy…"
+          <Field label="Quick note" optional>
+            <textarea value={form.note} onChange={e => setField('note', e.target.value)}
+              placeholder="Short phrase — e.g. fast cycles but weak on defense, strong autonomous"
               maxLength={200}
-              style={{ width: '100%', background: 'var(--surface-2)', border: '1.5px solid var(--border)', borderRadius: '10px', color: 'var(--text)', fontSize: '15px', padding: '0 14px', height: '52px', fontFamily: 'inherit', outline: 'none' }}
+              rows={2}
+              style={{ width: '100%', background: 'var(--surface-2)', border: '1.5px solid var(--border)', borderRadius: '10px', color: 'var(--text)', fontSize: '15px', padding: '12px 14px', minHeight: '58px', fontFamily: 'inherit', outline: 'none', resize: 'vertical', lineHeight: 1.4 }}
             />
           </Field>
 
