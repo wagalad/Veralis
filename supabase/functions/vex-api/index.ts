@@ -77,6 +77,28 @@ async function vexFetchAll(
   return items
 }
 
+// RobotEvents program ids (stable) for our program labels. Season ids change
+// every year, so they are resolved dynamically below rather than hardcoded.
+const PROGRAM_IDS: Record<string, number> = { VRC: 1, VEXU: 4, IQ: 41 }
+
+// Resolve the current active season id for a program (cached ~1 day). Returns
+// null if it can't be determined, so callers can fall back.
+async function resolveSeasonId(program: string, token: string): Promise<number | null> {
+  const pid = PROGRAM_IDS[program] ?? PROGRAM_IDS.VRC
+  const key = `active_season:${pid}`
+  const hit = cacheGet<number>(key)
+  if (hit) return hit
+  try {
+    const res = await vexGet(`/seasons?program%5B%5D=${pid}&active=true`, token)
+    const seasons = (Array.isArray(res.data) ? res.data : []) as { id: number; years_start?: string }[]
+    if (!seasons.length) return null
+    seasons.sort((a, b) => String(b.years_start ?? '').localeCompare(String(a.years_start ?? '')))
+    const id = seasons[0].id
+    cacheSet(key, id, 86400)
+    return id
+  } catch { return null }
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -260,6 +282,37 @@ Deno.serve(async (req) => {
         `team_matches:${teamId}:${eventId}`,
         30,
       )
+      return json({ matches })
+    }
+
+    // ── All of a team's matches this season (for the OpenSkill rating) ─────────
+    if (action === 'team_season_matches') {
+      const teamId = requireNumericId(body.teamId, 'teamId')
+      const program = body.program || 'VRC'
+      const seasonId = await resolveSeasonId(program, token)
+
+      if (seasonId != null) {
+        const matches = await vexFetchAll(
+          `/teams/${teamId}/matches?season%5B%5D=${seasonId}`,
+          token,
+          `team_season_matches:${teamId}:${seasonId}`,
+          300, // 5 min
+        )
+        return json({ matches })
+      }
+
+      // Fallback: season lookup failed — use the team's matches from the last year.
+      const all = await vexFetchAll(
+        `/teams/${teamId}/matches`,
+        token,
+        `team_all_matches:${teamId}`,
+        300,
+      ) as { scheduled?: string; started?: string }[]
+      const cutoff = Date.now() - 365 * 86400000
+      const matches = all.filter(m => {
+        const t = new Date(m.scheduled ?? m.started ?? 0).getTime()
+        return !t || t >= cutoff
+      })
       return json({ matches })
     }
 

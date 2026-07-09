@@ -4,7 +4,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTeam } from '../hooks/useTeam'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { supabase } from '../lib/supabase'
-import { searchTeams, getTeamStats } from '../lib/vexApi'
+import { searchTeams, getTeamStats, getTeamSeasonMatches } from '../lib/vexApi'
+import { computeTeamRating } from '../lib/rating'
 
 const DRIVETRAIN_LABELS = { tank: 'Tank', mecanum: 'Mecanum', xdrive: 'X-drive', other: 'Other/unsure' }
 const INTAKE_LABELS    = { strong: 'Strong', okay: 'Okay', weak: 'Weak', none: 'None/unsure' }
@@ -89,15 +90,20 @@ export default function Search() {
     setExpandedData(prev => ({ ...prev, [id]: { loading: true } }))
 
     try {
-      // Fetch VEX stats and our scouting entries in parallel
-      const [stats, scoutingRes] = await Promise.allSettled([
+      // Fetch VEX stats, our scouting entries, and season matches in parallel
+      const [stats, scoutingRes, seasonMatches] = await Promise.allSettled([
         getTeamStats(id),
         supabase
           .from('scouting_entries')
           .select('*')
           .eq('scouted_team_number', vexTeam.number)
           .order('created_at', { ascending: false }),
+        getTeamSeasonMatches(id, program),
       ])
+
+      const rating = seasonMatches.status === 'fulfilled'
+        ? computeTeamRating(seasonMatches.value ?? [], vexTeam.number)
+        : null
 
       setExpandedData(prev => ({
         ...prev,
@@ -106,6 +112,7 @@ export default function Search() {
           stats: stats.status === 'fulfilled' ? stats.value : null,
           statsError: stats.status === 'rejected' ? stats.reason?.message : null,
           scouting: scoutingRes.status === 'fulfilled' ? (scoutingRes.value.data ?? []) : [],
+          rating,
         },
       }))
     } catch (err) {
@@ -259,6 +266,9 @@ function TeamCard({ vexTeam, expanded, expandedData, hasTeam, teamId, onToggle }
 
           {expandedData && !expandedData.loading && (
             <>
+              {/* OpenSkill rating — the at-a-glance strength number */}
+              <RatingSection rating={expandedData.rating} />
+
               {/* W-L-T summary + last 3 events */}
               <PerformanceSection stats={expandedData.stats} />
 
@@ -298,6 +308,61 @@ function TeamCard({ vexTeam, expanded, expandedData, hasTeam, teamId, onToggle }
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+// ── OpenSkill rating ──────────────────────────────────────────────────────────
+
+function tierColor(tier) {
+  return tier === 'Elite' ? '#22c55e'
+    : tier === 'Strong' ? '#84cc16'
+      : tier === 'Solid' ? '#f59e0b'
+        : '#9ca3af'
+}
+
+function RatingSection({ rating }) {
+  if (!rating || rating.score == null) {
+    return (
+      <div style={{ marginBottom: '16px' }}>
+        <p style={{ ...sectionLabel, marginBottom: '8px' }}>Skill rating</p>
+        <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>
+          Not enough scored matches yet this season.
+        </p>
+      </div>
+    )
+  }
+
+  const { score, tier, matches, provisional } = rating
+  const color = tierColor(tier)
+
+  return (
+    <div style={{ marginBottom: '16px' }}>
+      <p style={{ ...sectionLabel, marginBottom: '8px' }}>Skill rating</p>
+      <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px', flexShrink: 0 }}>
+            <span style={{ fontSize: '34px', fontWeight: '800', letterSpacing: '-0.02em', lineHeight: 1, color }}>{score}</span>
+            <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '600' }}>/100</span>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span style={{
+              display: 'inline-block', fontSize: '12px', fontWeight: '700', color,
+              padding: '2px 9px', borderRadius: '20px',
+              background: `${color}22`, border: `1px solid ${color}55`,
+            }}>
+              {tier}{provisional ? ' · provisional' : ''}
+            </span>
+            <div style={{ marginTop: '8px', height: '6px', borderRadius: '3px', background: 'var(--border)', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${score}%`, background: color, borderRadius: '3px' }} />
+            </div>
+          </div>
+        </div>
+        <p style={{ margin: '10px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>
+          OpenSkill · based on {matches} season match{matches === 1 ? '' : 'es'}
+          {provisional ? ' (needs more matches to be confident)' : ''}
+        </p>
+      </div>
     </div>
   )
 }

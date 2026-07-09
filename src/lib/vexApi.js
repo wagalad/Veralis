@@ -116,3 +116,18 @@ export async function getTeamMatches(teamId, eventId) {
   })
   return matches
 }
+
+/**
+ * Fetch all of a team's matches in the current season (across events).
+ * Used to compute the team's OpenSkill rating.
+ *
+ * @param {string|number} teamId  - VEX API internal numeric team id
+ * @param {string} [program]      - "VRC" (default), "VEXU", "IQ" — picks the season
+ */
+export async function getTeamSeasonMatches(teamId, program = 'VRC') {
+  const { matches } = await proxy('team_season_matches', {
+    teamId: String(teamId),
+    program,
+  })
+  return matches
+}
