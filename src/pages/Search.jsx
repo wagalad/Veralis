@@ -333,7 +333,7 @@ function RatingSection({ rating, prevRating }) {
   if (!hasCur && !hasPrev) {
     return (
       <div style={{ marginBottom: '16px' }}>
-        <p style={{ ...sectionLabel, marginBottom: '8px' }}>Skill rating</p>
+        <p style={{ ...sectionLabel, marginBottom: '8px' }}>OpenSkill rating</p>
         <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>
           Not enough scored matches yet.
         </p>
@@ -346,7 +346,7 @@ function RatingSection({ rating, prevRating }) {
 
   return (
     <div style={{ marginBottom: '16px' }}>
-      <p style={{ ...sectionLabel, marginBottom: '8px' }}>Skill rating</p>
+      <p style={{ ...sectionLabel, marginBottom: '8px' }}>OpenSkill rating</p>
       <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 16px' }}>
         {hasCur ? (
           <>
