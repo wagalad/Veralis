@@ -168,6 +168,7 @@ function EventHome({ team, entries, onSelect }) {
   const { pending, reports, teamsScouted, scoutsToday } = deriveStats(entries)
 
   const pickerBlock = <EventPicker teamNumber={team.team_number} onSelect={onSelect} />
+  const queueBlock = <QueueHero upcoming={[]} hint="Load an event to start the queue countdown." />
   const snapshotBlock = <TeamSnapshot reports={reports} teamsScouted={teamsScouted} scoutsToday={scoutsToday} />
   const recentBlock = <RecentScouting entries={entries} />
   const offlineBlock = <OfflineQueue pending={pending} online={online} />
@@ -186,11 +187,11 @@ function EventHome({ team, entries, onSelect }) {
       {isDesktop ? (
         <div className="home-grid">
           <div className="home-col">{pickerBlock}{recentBlock}{offlineBlock}</div>
-          <div className="home-col">{snapshotBlock}{lookupBlock}</div>
+          <div className="home-col">{queueBlock}{snapshotBlock}{lookupBlock}</div>
         </div>
       ) : (
         <div className="home-grid">
-          {pickerBlock}{snapshotBlock}{recentBlock}{offlineBlock}{lookupBlock}
+          {pickerBlock}{queueBlock}{snapshotBlock}{recentBlock}{offlineBlock}{lookupBlock}
         </div>
       )}
     </div>
@@ -337,7 +338,7 @@ function StatusPill({ online, pending }) {
 
 // ── Time to Queue (live countdown to the next scheduled match) ─────────────────
 
-function QueueHero({ upcoming }) {
+function QueueHero({ upcoming, hint }) {
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000)
@@ -400,7 +401,7 @@ function QueueHero({ upcoming }) {
             <p style={{ margin: '2px auto 0', color: 'var(--text-muted)', fontSize: '13px', maxWidth: '30ch' }}>Up next — start time not posted yet.</p>
           </>
         ) : (
-          <p style={{ margin: '12px 0 2px', color: 'var(--text-muted)', fontSize: '14px' }}>No upcoming matches.</p>
+          <p style={{ margin: '12px 0 2px', color: 'var(--text-muted)', fontSize: '14px' }}>{hint ?? 'No upcoming matches.'}</p>
         )}
       </div>
     </div>
