@@ -7,6 +7,19 @@ import { rating, rate, ordinal } from 'openskill'
 // results weighted by the opponents actually faced. Not a globally-normalized
 // leaderboard — surfaced in the UI as "based on N season matches".
 
+// Whether a match has actually been played (so it can move ratings). RobotEvents'
+// `scored` boolean is unreliable — for past seasons it often stays `false` even on
+// fully-scored matches — so we treat a match as played when it carries a real score.
+// A future/unplayed match sits at 0–0 with no start time and is skipped.
+function isPlayed(m) {
+  if (!m) return false
+  const al = m.alliances ?? []
+  const red = al.find(a => a.color === 'red')
+  const blue = al.find(a => a.color === 'blue')
+  if (!red || !blue) return false
+  return m.scored === true || (red.score ?? 0) + (blue.score ?? 0) > 0
+}
+
 // Pull a team number string out of a RobotEvents alliance-team entry (shape varies).
 function teamNumberOf(t) {
   const n = t?.team?.number ?? t?.team?.name ?? t?.number ?? t?.name
@@ -22,7 +35,7 @@ export function computeTeamRating(matches, teamNumber) {
   const me = (teamNumber || '').toUpperCase()
 
   const played = (matches || [])
-    .filter(m => m?.scored)
+    .filter(isPlayed)
     .sort((a, b) =>
       String(a.scheduled ?? a.started ?? '').localeCompare(String(b.scheduled ?? b.started ?? '')))
 
