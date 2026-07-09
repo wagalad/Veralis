@@ -239,11 +239,11 @@ export default function Scout() {
 
           {/* Robot specs — low eye-test value, collapsed so the fast path stays lean */}
           <div>
-            <button type="button" className="v-btn v-btn-ghost" onClick={() => setShowMore(s => !s)}
+            <button type="button" className="v-btn" onClick={() => setShowMore(s => !s)}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%',
                 minHeight: '48px', padding: '0 14px', cursor: 'pointer',
-                background: 'var(--surface-2)', border: '1px dashed var(--border)', borderRadius: '10px',
+                background: 'var(--surface-2)', border: '1px dashed var(--accent)', borderRadius: '10px',
                 color: 'var(--text)', fontFamily: 'inherit', fontSize: '14px', fontWeight: '600',
               }}>
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{showMore ? '▲' : '▼'}</span>
