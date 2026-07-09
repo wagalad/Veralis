@@ -81,22 +81,28 @@ async function vexFetchAll(
 // every year, so they are resolved dynamically below rather than hardcoded.
 const PROGRAM_IDS: Record<string, number> = { VRC: 1, VEXU: 4, IQ: 41 }
 
-// Resolve the current active season id for a program (cached ~1 day). Returns
-// null if it can't be determined, so callers can fall back.
-async function resolveSeasonId(program: string, token: string): Promise<number | null> {
+// Resolve the current + previous season ids for a program (cached ~1 day).
+// Fetches the program's seasons, keeps those already started, newest first —
+// [0] = current, [1] = previous. Either may be null if it can't be determined.
+async function resolveSeasons(
+  program: string,
+  token: string,
+): Promise<{ current: number | null; previous: number | null }> {
   const pid = PROGRAM_IDS[program] ?? PROGRAM_IDS.VRC
-  const key = `active_season:${pid}`
-  const hit = cacheGet<number>(key)
+  const key = `seasons:${pid}`
+  const hit = cacheGet<{ current: number | null; previous: number | null }>(key)
   if (hit) return hit
   try {
-    const res = await vexGet(`/seasons?program%5B%5D=${pid}&active=true`, token)
-    const seasons = (Array.isArray(res.data) ? res.data : []) as { id: number; years_start?: string }[]
-    if (!seasons.length) return null
-    seasons.sort((a, b) => String(b.years_start ?? '').localeCompare(String(a.years_start ?? '')))
-    const id = seasons[0].id
-    cacheSet(key, id, 86400)
-    return id
-  } catch { return null }
+    const res = await vexGet(`/seasons?program%5B%5D=${pid}`, token)
+    const seasons = (Array.isArray(res.data) ? res.data : []) as { id: number; start?: string }[]
+    const now = Date.now()
+    const started = seasons
+      .filter(s => { const t = Date.parse(s.start ?? ''); return isNaN(t) || t <= now })
+      .sort((a, b) => (Date.parse(b.start ?? '') || 0) - (Date.parse(a.start ?? '') || 0))
+    const out = { current: started[0]?.id ?? null, previous: started[1]?.id ?? null }
+    if (out.current != null) cacheSet(key, out, 86400)
+    return out
+  } catch { return { current: null, previous: null } }
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────
@@ -285,11 +291,13 @@ Deno.serve(async (req) => {
       return json({ matches })
     }
 
-    // ── All of a team's matches this season (for the OpenSkill rating) ─────────
+    // ── A team's matches for a season (current | previous) for the rating ─────
     if (action === 'team_season_matches') {
       const teamId = requireNumericId(body.teamId, 'teamId')
       const program = body.program || 'VRC'
-      const seasonId = await resolveSeasonId(program, token)
+      const which = body.which === 'previous' ? 'previous' : 'current'
+      const seasons = await resolveSeasons(program, token)
+      const seasonId = which === 'previous' ? seasons.previous : seasons.current
 
       if (seasonId != null) {
         const matches = await vexFetchAll(
@@ -301,7 +309,10 @@ Deno.serve(async (req) => {
         return json({ matches })
       }
 
-      // Fallback: season lookup failed — use the team's matches from the last year.
+      // No previous season (e.g. a first-year team) → empty.
+      if (which === 'previous') return json({ matches: [] })
+
+      // Current-season lookup failed — fall back to the team's last-year matches.
       const all = await vexFetchAll(
         `/teams/${teamId}/matches`,
         token,
