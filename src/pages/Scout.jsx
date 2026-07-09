@@ -124,7 +124,7 @@ export default function Scout() {
         </div>
         <button
           type="button"
-          onClick={() => { setTeamInput(scoutedTeam); setEditingTeam(true) }}
+          className="v-btn v-btn-ghost" onClick={() => { setTeamInput(scoutedTeam); setEditingTeam(true) }}
           style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer', minHeight: '40px' }}
         >
           Change
@@ -177,7 +177,7 @@ export default function Scout() {
 
           <Field label="Photo">
             <input ref={photoRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handlePhoto} />
-            <button type="button" onClick={() => photoRef.current?.click()} style={{
+            <button type="button" className="v-btn" onClick={() => photoRef.current?.click()} style={{
               width: '100%', minHeight: '52px',
               border: `1.5px solid ${form.photo ? 'var(--accent)' : 'var(--border)'}`,
               borderRadius: '10px',
@@ -205,7 +205,7 @@ export default function Scout() {
             )}
           </Field>
 
-          <button type="submit" disabled={saving} style={{
+          <button className="v-btn v-btn-accent" type="submit" disabled={saving} style={{
             width: '100%', height: '58px',
             background: saving ? 'var(--surface-2)' : 'var(--accent)',
             color: saving ? 'var(--text-muted)' : '#fff',
@@ -241,7 +241,7 @@ function Gate({ title, message, action, onAction }) {
       <h1 style={{ margin: '4px 0 24px', fontSize: '28px', fontWeight: '800' }}>{title}</h1>
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '28px 20px', textAlign: 'center' }}>
         <p style={{ color: 'var(--text-muted)', margin: '0 0 20px', fontSize: '15px', lineHeight: 1.5 }}>{message}</p>
-        <button onClick={onAction} style={{ height: '52px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', width: '100%' }}>
+        <button className="v-btn v-btn-accent" onClick={onAction} style={{ height: '52px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', width: '100%' }}>
           {action}
         </button>
       </div>

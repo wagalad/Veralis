@@ -765,6 +765,7 @@ function Gate({ message, action, onAction }) {
         <p style={{ color: 'var(--text-muted)', margin: '0 0 20px', fontSize: '15px', lineHeight: 1.5 }}>{message}</p>
         <button
           onClick={onAction}
+          className="v-btn v-btn-accent"
           style={{ height: '52px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', width: '100%' }}
         >
           {action}

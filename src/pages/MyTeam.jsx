@@ -22,10 +22,10 @@ export default function MyTeam() {
           <p style={{ color: 'var(--text-muted)', margin: '0 0 20px', fontSize: '15px', lineHeight: 1.5 }}>
             Sign in to join your team's scouting pool and share data in real time.
           </p>
-          <button onClick={() => navigate('/login')} style={{ ...btnPrimary, width: '100%', marginBottom: '10px' }}>
+          <button onClick={() => navigate('/login')} className="v-btn v-btn-accent" style={{ ...btnPrimary, width: '100%', marginBottom: '10px' }}>
             Sign in
           </button>
-          <button onClick={() => navigate('/login')} style={{ ...btnSecondary, width: '100%' }}>
+          <button onClick={() => navigate('/login?mode=signup')} className="v-btn v-btn-ghost" style={{ ...btnSecondary, width: '100%' }}>
             Create account
           </button>
         </div>
@@ -141,7 +141,7 @@ function ScoutingLog({ team, getMembers, currentUserId, onScout }) {
           <p style={{ margin: '0 0 14px', fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
             No scouting entries yet. Forms your team submits will collect here.
           </p>
-          <button onClick={onScout} style={{ ...btnPrimary, height: '44px', padding: '0 20px', fontSize: '14px' }}>
+          <button onClick={onScout} className="v-btn v-btn-accent" style={{ ...btnPrimary, height: '44px', padding: '0 20px', fontSize: '14px' }}>
             Scout a team
           </button>
         </div>
@@ -352,7 +352,8 @@ function TeamCard({ team, role, currentUserId, leaveTeam, regenerateInvite, getM
         </div>
         <button
           onClick={copyCode}
-          style={{ ...btnSecondary, height: '48px', padding: '0 16px', fontSize: '13px', flexShrink: 0 }}
+          className="v-btn v-btn-ghost"
+          style={{ ...btnSecondary, height: '48px', padding: '0 16px', fontSize: '13px', flexShrink: 0, color: copied ? '#22c55e' : 'var(--text-muted)' }}
         >
           {copied ? 'Copied!' : 'Copy'}
         </button>
@@ -716,7 +717,7 @@ function TeamSetup({ createTeam, joinTeam }) {
           </p>
         ) : null}
 
-        <button type="submit" disabled={loading} style={{ ...btnPrimary, width: '100%', opacity: loading ? 0.6 : 1 }}>
+        <button type="submit" className="v-btn v-btn-accent" disabled={loading} style={{ ...btnPrimary, width: '100%', opacity: loading ? 0.6 : 1 }}>
           {loading ? 'Please wait…' : mode === 'join' ? 'Join team' : 'Create team'}
         </button>
       </form>

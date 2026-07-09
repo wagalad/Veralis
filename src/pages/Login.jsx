@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { supabase } from '../lib/supabase'
 
@@ -10,7 +10,8 @@ const HCAPTCHA_SITEKEY = import.meta.env.PROD
   : '10000000-ffff-ffff-ffff-000000000001'
 
 export default function Login() {
-  const [mode, setMode] = useState('signin')
+  const [searchParams] = useSearchParams()
+  const [mode, setMode] = useState(searchParams.get('mode') === 'signup' ? 'signup' : 'signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
@@ -18,6 +19,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [oauthLoading, setOauthLoading] = useState(null)
   const [captchaToken, setCaptchaToken] = useState(null)
+  const [showPw, setShowPw] = useState(false)
   const captchaRef = useRef(null)
   const navigate = useNavigate()
 
@@ -71,11 +73,15 @@ export default function Login() {
       padding: '32px 20px',
     }}>
       {/* Logo + App name */}
-      <div style={{ marginBottom: '36px', textAlign: 'center' }}>
-        <img src="/logo.png" alt="Veralis" style={{ width: '160px', height: '160px', objectFit: 'contain', marginBottom: '12px' }} />
+      <div style={{ marginBottom: '32px', textAlign: 'center' }}>
+        <img src="/logo-mark.png" alt="Veralis" width="132" height="100" decoding="async"
+          style={{ width: '132px', height: '100px', objectFit: 'contain', display: 'block', margin: '0 auto 10px' }} />
         <h1 style={{ margin: 0, fontSize: '26px', fontWeight: '800', letterSpacing: '-0.5px' }}>
-          {isSignUp ? 'Create account' : 'Sign in'}
+          {isSignUp ? 'Create your account' : 'Welcome back'}
         </h1>
+        <p style={{ margin: '6px 0 0', fontSize: '14px', color: 'var(--text-muted)' }}>
+          {isSignUp ? 'Start scouting with your team in minutes.' : 'Sign in to your scouting pool.'}
+        </p>
       </div>
 
       <div style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -83,6 +89,7 @@ export default function Login() {
         {/* OAuth buttons */}
         <button
           type="button"
+          className="v-btn v-btn-ghost"
           onClick={() => handleOAuth('google')}
           disabled={!!oauthLoading}
           style={{ ...oauthBtn, opacity: oauthLoading && oauthLoading !== 'google' ? 0.5 : 1 }}
@@ -93,6 +100,7 @@ export default function Login() {
 
         <button
           type="button"
+          className="v-btn"
           onClick={() => handleOAuth('apple')}
           disabled={!!oauthLoading}
           style={{ ...oauthBtn, background: '#fff', color: '#000', opacity: oauthLoading && oauthLoading !== 'apple' ? 0.5 : 1 }}
@@ -116,19 +124,39 @@ export default function Login() {
             onChange={e => setEmail(e.target.value)}
             placeholder="Email"
             required
+            autoFocus
             autoComplete="email"
             style={inputStyle}
           />
-          <input
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="Password"
-            required
-            autoComplete={isSignUp ? 'new-password' : 'current-password'}
-            minLength={isSignUp ? 8 : undefined}
-            style={inputStyle}
-          />
+          <div style={{ position: 'relative' }}>
+            <input
+              type={showPw ? 'text' : 'password'}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Password"
+              required
+              autoComplete={isSignUp ? 'new-password' : 'current-password'}
+              minLength={isSignUp ? 8 : undefined}
+              style={{ ...inputStyle, paddingRight: '64px' }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPw(v => !v)}
+              aria-label={showPw ? 'Hide password' : 'Show password'}
+              style={{
+                position: 'absolute', top: 0, right: 0, height: '54px', padding: '0 14px',
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--text-muted)', fontSize: '13px', fontWeight: '600',
+              }}
+            >
+              {showPw ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          {isSignUp && (
+            <p style={{ margin: '-2px 2px 0', fontSize: '12px', color: 'var(--text-muted)' }}>
+              Use at least 8 characters.
+            </p>
+          )}
 
           {error && (
             <p style={{ margin: 0, fontSize: '14px', color: '#f87171', padding: '10px 14px', background: 'rgba(248,113,113,0.1)', borderRadius: '8px', border: '1px solid rgba(248,113,113,0.3)' }}>
@@ -154,6 +182,7 @@ export default function Login() {
 
           <button
             type="submit"
+            className="v-btn v-btn-accent"
             disabled={submitDisabled}
             style={{
               height: '54px',
@@ -173,6 +202,7 @@ export default function Login() {
         </form>
 
         <button
+          className="v-btn v-btn-ghost"
           onClick={() => { setMode(isSignUp ? 'signin' : 'signup'); setError(null); setSuccess(null) }}
           style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', padding: '8px', marginTop: '4px' }}
         >

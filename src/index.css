@@ -185,3 +185,85 @@ input:focus, textarea:focus {
     gap: 16px;
   }
 }
+
+/* ── Landing page (public, logged-out "/") ──────────────────────────── */
+.lz {
+  --lz-max: 1120px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+}
+.lz-wrap { max-width: var(--lz-max); margin: 0 auto; padding: 0 20px; }
+
+.lz-hero-grid {
+  display: grid;
+  gap: 40px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+}
+@media (min-width: 900px) {
+  .lz-hero-grid { grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 56px; }
+}
+
+.lz-bento { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 680px) { .lz-bento { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1000px) { .lz-bento { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1000px) { .lz-span-2 { grid-column: span 2; } }
+
+.lz-steps { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 560px) { .lz-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 960px) { .lz-steps { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.lz-trust { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 720px) { .lz-trust { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+
+.lz-reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lz-reveal.is-visible { opacity: 1; transform: none; }
+
+.lz-cta {
+  transition: background-color 0.15s ease, transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lz-cta:hover { transform: translateY(-1px); }
+.lz-cta:active { transform: translateY(0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .lz-reveal { opacity: 1; transform: none; transition: none; }
+  .lz-cta { transition: none; }
+  .lz-cta:hover { transform: none; }
+}
+
+/* Landing: theme-aware brighter red for small text on dark (AA contrast) */
+.lz { --lz-eyebrow: var(--accent); }
+@media (prefers-color-scheme: dark) {
+  .lz { --lz-eyebrow: color-mix(in oklch, var(--accent) 68%, white); }
+}
+:root[data-theme="light"] .lz { --lz-eyebrow: var(--accent); }
+:root[data-theme="dark"] .lz { --lz-eyebrow: color-mix(in oklch, var(--accent) 68%, white); }
+
+/* Landing: text-link hover + shared keyboard focus rings */
+.lz-link { transition: color 0.15s ease; }
+.lz-link:hover { color: var(--text); }
+.lz-cta:focus-visible,
+.lz-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 9px;
+}
+
+/* ── App-wide interaction states (was missing on buttons/selects) ─────── */
+/* Keyboard focus ring. :where() keeps specificity 0 so component styles win,
+   except the outline. Landing (.lz-cta/.lz-link) override with their own. */
+:where(button, select, a, input, textarea, [role="switch"], [role="button"]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Hover/active for inline-styled buttons. The state-only !important is a
+   contained override of the inline base color, not a base-style override. */
+.v-btn { transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease, opacity 0.15s ease; }
+.v-btn:active:not(:disabled) { transform: translateY(1px); }
+.v-btn-accent:hover:not(:disabled) { background: var(--accent-hover) !important; }
+.v-btn-ghost:hover:not(:disabled) { border-color: var(--text-muted) !important; color: var(--text) !important; }

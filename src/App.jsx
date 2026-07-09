@@ -10,6 +10,7 @@ import GameRules from './pages/GameRules'
 import Settings from './pages/Settings'
 import AdminPanel from './pages/AdminPanel'
 import Login from './pages/Login'
+import Landing from './pages/Landing'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 
@@ -27,7 +28,9 @@ const CHROMELESS = ['/login', '/privacy', '/terms']
 function Shell() {
   const { pathname } = useLocation()
   const { user, mfaRequired } = useAuth()
-  const chromeless = CHROMELESS.includes(pathname)
+  // The public landing page ("/" when logged out) renders without the app nav.
+  const onLanding = pathname === '/' && !user
+  const chromeless = CHROMELESS.includes(pathname) || onLanding
 
   // A signed-in user with 2FA enabled must pass the code challenge before
   // anything else in the app is reachable.
@@ -46,7 +49,7 @@ function Shell() {
       {!chromeless && <BottomNav />}
       <main className={chromeless ? undefined : 'app-main'} style={chromeless ? { flex: 1, overflowY: 'auto' } : undefined}>
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={user ? <Home /> : <Landing />} />
           <Route path="/search" element={<Search />} />
           <Route path="/scout" element={<Scout />} />
           <Route path="/my-team" element={<MyTeam />} />

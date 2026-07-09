@@ -41,7 +41,7 @@ export default function AdminPanel() {
         {TABS.map(([id, label]) => (
           <button
             key={id}
-            onClick={() => setTab(id)}
+            className="v-btn" onClick={() => setTab(id)}
             style={{
               ...tabBtn,
               color: tab === id ? '#fff' : 'var(--text-muted)',
@@ -123,7 +123,7 @@ function TeamsTab({ admin }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       {teams.map((t) => (
         <div key={t.id} style={card}>
-          <button onClick={() => setOpenId(openId === t.id ? null : t.id)} style={rowBtn}>
+          <button className="v-btn" onClick={() => setOpenId(openId === t.id ? null : t.id)} style={rowBtn}>
             <div>
               <span style={{ fontWeight: 700, fontSize: '15px' }}>{t.team_number}</span>
               {t.team_name && <span style={{ color: 'var(--text-muted)', marginLeft: '8px', fontSize: '13px' }}>{t.team_name}</span>}

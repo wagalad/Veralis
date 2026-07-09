@@ -241,7 +241,7 @@ function ScoreCalculator() {
 
       <button
         type="button"
-        onClick={reset}
+        className="v-btn v-btn-ghost" onClick={reset}
         style={{
           width: '100%', marginTop: '4px', padding: '11px', cursor: 'pointer',
           background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '10px',
@@ -320,9 +320,9 @@ function Stepper({ label, mult, value, onChange, accent, max = 99, last }) {
         </span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <button type="button" aria-label={`Decrease ${label}`} disabled={value <= 0} onClick={() => onChange(Math.max(0, value - 1))} style={btn(value <= 0)}>−</button>
+        <button type="button" aria-label={`Decrease ${label}`} disabled={value <= 0} className="v-btn" onClick={() => onChange(Math.max(0, value - 1))} style={btn(value <= 0)}>−</button>
         <span style={{ minWidth: '22px', textAlign: 'center', fontSize: '17px', fontWeight: '800', color: 'var(--text)' }}>{value}</span>
-        <button type="button" aria-label={`Increase ${label}`} disabled={value >= max} onClick={() => onChange(Math.min(max, value + 1))} style={btn(value >= max)}>+</button>
+        <button type="button" aria-label={`Increase ${label}`} disabled={value >= max} className="v-btn" onClick={() => onChange(Math.min(max, value + 1))} style={btn(value >= max)}>+</button>
       </div>
     </div>
   )
@@ -334,7 +334,7 @@ function SegBtn({ active, onClick, color, children }) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      className="v-btn" onClick={onClick}
       style={{
         flex: 1, padding: '9px 6px', border: 'none', borderRadius: '8px', cursor: 'pointer',
         fontFamily: 'inherit', fontSize: '13px', fontWeight: active ? '700' : '500',
@@ -356,7 +356,7 @@ function Section({ label, defaultOpen = false, children }) {
     <div style={card}>
       <button
         type="button"
-        onClick={() => setOpen(o => !o)}
+        className="v-btn" onClick={() => setOpen(o => !o)}
         aria-expanded={open}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',

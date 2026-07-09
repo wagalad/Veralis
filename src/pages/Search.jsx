@@ -49,7 +49,7 @@ export default function Search() {
           <p style={{ color: 'var(--text-muted)', fontSize: '15px', lineHeight: 1.5, margin: '0 0 20px' }}>
             Sign in to search for any VEX team.
           </p>
-          <button onClick={() => navigate('/login')} style={{ ...btnPrimary, width: '100%' }}>
+          <button onClick={() => navigate('/login')} className="v-btn v-btn-accent" style={{ ...btnPrimary, width: '100%' }}>
             Sign in
           </button>
         </div>
@@ -146,7 +146,7 @@ export default function Search() {
             <button
               key={p}
               type="button"
-              onClick={() => setProgram(p)}
+              className="v-btn" onClick={() => setProgram(p)}
               style={{
                 height: '34px', padding: '0 14px', borderRadius: '8px',
                 fontSize: '12px', fontWeight: '600', cursor: 'pointer',
@@ -162,7 +162,7 @@ export default function Search() {
 
         <button
           type="submit"
-          disabled={searching || !query.trim()}
+          className="v-btn v-btn-accent" disabled={searching || !query.trim()}
           style={{ ...btnPrimary, width: '100%', opacity: searching || !query.trim() ? 0.5 : 1 }}
         >
           {searching ? 'Searching…' : 'Search'}
@@ -279,7 +279,7 @@ function TeamCard({ vexTeam, expanded, expandedData, hasTeam, teamId, onToggle }
 
               {/* Full per-event breakdown toggle */}
               <button
-                onClick={() => setShowBreakdown(s => !s)}
+                className="v-btn" onClick={() => setShowBreakdown(s => !s)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '5px',
                   background: 'none', border: 'none', cursor: 'pointer',
@@ -589,7 +589,7 @@ function EventBreakdownSection({ stats }) {
             {seasonYears.map(year => (
               <button
                 key={year}
-                onClick={() => setActiveYear(year)}
+                className="v-btn" onClick={() => setActiveYear(year)}
                 style={{
                   height: '24px', padding: '0 10px', borderRadius: '6px',
                   fontSize: '11px', fontWeight: '700', cursor: 'pointer',

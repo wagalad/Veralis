@@ -45,7 +45,7 @@ export default function Settings() {
             return (
               <button
                 key={t}
-                onClick={() => chooseTheme(t)}
+                className="v-btn" onClick={() => chooseTheme(t)}
                 style={{
                   flex: 1, height: '46px', borderRadius: '10px', fontSize: '14px', fontWeight: 600,
                   cursor: 'pointer', textTransform: 'capitalize',
@@ -70,18 +70,18 @@ export default function Settings() {
 
       {/* Operator — only rendered for platform admins */}
       {isOperator && (
-        <button onClick={() => navigate('/admin')} style={{ ...card, width: '100%', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: 'inherit', textAlign: 'left' }}>
+        <button className="v-btn" onClick={() => navigate('/admin')} style={{ ...card, width: '100%', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: 'inherit', textAlign: 'left' }}>
           <span style={{ fontWeight: 600, fontSize: '15px' }}>Operator dashboard</span>
           <span style={{ color: 'var(--accent)', fontWeight: 700 }}>→</span>
         </button>
       )}
 
       {user ? (
-        <button onClick={async () => { await signOut(); navigate('/login') }} style={{ ...btnSecondary, width: '100%', marginTop: '8px' }}>
+        <button className="v-btn v-btn-ghost" onClick={async () => { await signOut(); navigate('/login') }} style={{ ...btnSecondary, width: '100%', marginTop: '8px' }}>
           Sign out
         </button>
       ) : (
-        <button onClick={() => navigate('/login')} style={{ ...btnPrimary, width: '100%', marginTop: '8px' }}>
+        <button onClick={() => navigate('/login')} className="v-btn v-btn-accent" style={{ ...btnPrimary, width: '100%', marginTop: '8px' }}>
           Sign in
         </button>
       )}

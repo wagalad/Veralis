@@ -92,10 +92,10 @@ export default function MfaSetup() {
           />
           {error && <p style={errorStyle}>{error}</p>}
           <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-            <button type="submit" disabled={busy || code.length !== 6} style={{ ...primaryBtn, flex: 1, opacity: busy || code.length !== 6 ? 0.6 : 1 }}>
+            <button className="v-btn v-btn-accent" type="submit" disabled={busy || code.length !== 6} style={{ ...primaryBtn, flex: 1, opacity: busy || code.length !== 6 ? 0.6 : 1 }}>
               {busy ? 'Verifying…' : 'Confirm'}
             </button>
-            <button type="button" onClick={() => { setEnroll(null); setCode(''); setError(null) }} style={secondaryBtn}>
+            <button type="button" className="v-btn v-btn-ghost" onClick={() => { setEnroll(null); setCode(''); setError(null) }} style={secondaryBtn}>
               Cancel
             </button>
           </div>
@@ -105,10 +105,10 @@ export default function MfaSetup() {
           <p style={{ margin: '0 0 12px', fontSize: '14px', color: '#4ade80', fontWeight: 600 }}>● On — a code is required at sign-in.</p>
           {error && <p style={errorStyle}>{error}</p>}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            <button onClick={regenerate} disabled={busy} style={{ ...secondaryBtn, opacity: busy ? 0.6 : 1 }}>
+            <button className="v-btn v-btn-ghost" onClick={regenerate} disabled={busy} style={{ ...secondaryBtn, opacity: busy ? 0.6 : 1 }}>
               Regenerate recovery codes
             </button>
-            <button onClick={turnOff} disabled={busy} style={{ ...dangerBtn, opacity: busy ? 0.6 : 1 }}>
+            <button className="v-btn" onClick={turnOff} disabled={busy} style={{ ...dangerBtn, opacity: busy ? 0.6 : 1 }}>
               Turn off 2FA
             </button>
           </div>
@@ -119,7 +119,7 @@ export default function MfaSetup() {
             Add a second step at sign-in with an authenticator app for stronger account security.
           </p>
           {error && <p style={errorStyle}>{error}</p>}
-          <button onClick={begin} disabled={busy} style={{ ...primaryBtn, opacity: busy ? 0.6 : 1 }}>
+          <button className="v-btn v-btn-accent" onClick={begin} disabled={busy} style={{ ...primaryBtn, opacity: busy ? 0.6 : 1 }}>
             {busy ? 'Starting…' : 'Enable 2FA'}
           </button>
         </div>
@@ -158,10 +158,10 @@ function RecoveryCodes({ codes, onDone }) {
         {codes.map(c => <span key={c}>{c}</span>)}
       </div>
       <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-        <button onClick={copy} style={secondaryBtn}>{copied ? 'Copied!' : 'Copy'}</button>
-        <button onClick={download} style={secondaryBtn}>Download</button>
+        <button className="v-btn v-btn-ghost" onClick={copy} style={secondaryBtn}>{copied ? 'Copied!' : 'Copy'}</button>
+        <button className="v-btn v-btn-ghost" onClick={download} style={secondaryBtn}>Download</button>
       </div>
-      <button onClick={onDone} style={{ ...primaryBtn, width: '100%', marginTop: '10px' }}>
+      <button className="v-btn v-btn-accent" onClick={onDone} style={{ ...primaryBtn, width: '100%', marginTop: '10px' }}>
         I've saved my codes
       </button>
     </div>

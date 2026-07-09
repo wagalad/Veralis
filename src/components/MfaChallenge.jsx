@@ -50,7 +50,7 @@ export default function MfaChallenge() {
           Two-factor authentication has been turned off using your recovery code. For your security,
           set it up again from the My Team page.
         </p>
-        <button onClick={recheckMfa} style={{ ...primaryBtn, width: '100%' }}>Continue</button>
+        <button className="v-btn v-btn-accent" onClick={recheckMfa} style={{ ...primaryBtn, width: '100%' }}>Continue</button>
       </Wrap>
     )
   }
@@ -90,7 +90,7 @@ export default function MfaChallenge() {
         {error && <p style={errorStyle}>{error}</p>}
         <button
           type="submit"
-          disabled={loading || (isRecovery ? code.trim().length < 6 : code.length !== 6)}
+          className="v-btn v-btn-accent" disabled={loading || (isRecovery ? code.trim().length < 6 : code.length !== 6)}
           style={{ ...primaryBtn, opacity: loading || (isRecovery ? code.trim().length < 6 : code.length !== 6) ? 0.6 : 1 }}
         >
           {loading ? 'Verifying…' : isRecovery ? 'Use recovery code' : 'Verify'}
@@ -98,13 +98,13 @@ export default function MfaChallenge() {
       </form>
 
       <button
-        onClick={() => { setMode(isRecovery ? 'totp' : 'recovery'); setCode(''); setError(null) }}
+        className="v-btn" onClick={() => { setMode(isRecovery ? 'totp' : 'recovery'); setCode(''); setError(null) }}
         style={linkBtn}
       >
         {isRecovery ? 'Back to authenticator code' : 'Lost your authenticator? Use a recovery code'}
       </button>
 
-      <button onClick={async () => { await signOut(); navigate('/login') }} style={{ ...secondaryBtn, width: '100%', marginTop: '4px' }}>
+      <button className="v-btn v-btn-ghost" onClick={async () => { await signOut(); navigate('/login') }} style={{ ...secondaryBtn, width: '100%', marginTop: '4px' }}>
         Sign out
       </button>
     </Wrap>
