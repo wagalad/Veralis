@@ -344,33 +344,60 @@ function QueueHero({ upcoming }) {
     return () => clearInterval(id)
   }, [])
 
-  const next = upcoming.find(m => m.scheduled && new Date(m.scheduled).getTime() > now)
-  const totalSec = next ? Math.max(0, Math.floor((new Date(next.scheduled).getTime() - now) / 1000)) : null
-  const urgent = totalSec != null && totalSec <= 300
+  // `upcoming` is unscored matches sorted by scheduled time ascending. Anchor to
+  // the EARLIEST unscored match that has a time — not the first one still in the
+  // future — so a match that's running late stays on screen as "overdue" instead
+  // of silently vanishing. When it finally gets scored it drops out of `upcoming`
+  // and the anchor advances to the next one on its own.
+  const next = upcoming.find(m => m.scheduled)
+  const untimed = !next && upcoming.length > 0 ? upcoming[0] : null
+
+  const diffSec = next ? Math.floor((new Date(next.scheduled).getTime() - now) / 1000) : null
+  const overdue = diffSec != null && diffSec <= 0
+  const urgent = diffSec != null && diffSec > 0 && diffSec <= 300
+  const lateSec = overdue ? -diffSec : 0
 
   let display = '—'
-  if (totalSec != null) {
-    if (totalSec >= 3600) {
-      display = `${Math.floor(totalSec / 3600)}h ${Math.floor((totalSec % 3600) / 60)}m`
+  if (overdue) {
+    display = 'Now'
+  } else if (diffSec != null) {
+    if (diffSec >= 3600) {
+      display = `${Math.floor(diffSec / 3600)}h ${Math.floor((diffSec % 3600) / 60)}m`
     } else {
-      const m = Math.floor(totalSec / 60), s = totalSec % 60
+      const m = Math.floor(diffSec / 60), s = diffSec % 60
       display = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
     }
   }
 
+  const lateStr = lateSec >= 60 ? `${Math.floor(lateSec / 60)}m late` : `${lateSec}s late`
+  const glow = overdue
+    ? 'radial-gradient(120% 90% at 50% -10%, rgba(239,68,68,0.16), transparent 70%)'
+    : next ? 'radial-gradient(120% 90% at 50% -10%, rgba(204,0,0,0.10), transparent 70%)' : 'transparent'
+
   return (
     <div style={card}>
-      <div style={{ textAlign: 'center', padding: '22px 18px', background: next ? 'radial-gradient(120% 90% at 50% -10%, rgba(204,0,0,0.10), transparent 70%)' : 'transparent' }}>
+      <div style={{ textAlign: 'center', padding: '22px 18px', background: glow }}>
         <p style={{ ...cardTitle, margin: 0 }}>Time to Queue</p>
         {next ? (
           <>
-            <p style={{ margin: '8px 0 4px', fontSize: '54px', fontWeight: '800', color: 'var(--accent)', lineHeight: 1.02, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{display}</p>
-            {urgent && (
+            <p style={{ margin: '8px 0 4px', fontSize: overdue ? '44px' : '54px', fontWeight: '800', color: overdue ? '#ef4444' : 'var(--accent)', lineHeight: 1.02, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{display}</p>
+            {overdue ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '8px', padding: '4px 11px', borderRadius: '999px', background: 'rgba(239,68,68,0.16)', color: '#ef4444', fontWeight: '700', fontSize: '11.5px' }}>
+                ▶ Queue now{lateSec > 0 ? ` · ${lateStr}` : ''}
+              </span>
+            ) : urgent ? (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '8px', padding: '4px 11px', borderRadius: '999px', background: 'rgba(245,158,11,0.14)', color: '#f59e0b', fontWeight: '700', fontSize: '11.5px' }}>⚠ Leave now</span>
-            )}
+            ) : null}
             <p style={{ margin: '6px auto 0', color: 'var(--text-muted)', fontSize: '13px', maxWidth: '30ch' }}>
-              Head to the field queue for <b style={{ color: 'var(--text)' }}>{next.name ?? `Match ${next.matchnum}`}</b>.
+              {overdue ? 'Should be up' : 'Head to the field queue'} for <b style={{ color: 'var(--text)' }}>{next.name ?? `Match ${next.matchnum}`}</b>.
             </p>
+          </>
+        ) : untimed ? (
+          <>
+            <p style={{ margin: '10px 0 4px', fontSize: '20px', fontWeight: '800', color: 'var(--text)' }}>
+              {untimed.name ?? `Match ${untimed.matchnum}`}
+            </p>
+            <p style={{ margin: '2px auto 0', color: 'var(--text-muted)', fontSize: '13px', maxWidth: '30ch' }}>Up next — start time not posted yet.</p>
           </>
         ) : (
           <p style={{ margin: '12px 0 2px', color: 'var(--text-muted)', fontSize: '14px' }}>No upcoming matches.</p>
