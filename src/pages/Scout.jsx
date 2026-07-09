@@ -198,6 +198,11 @@ export default function Scout() {
               rows={2}
               style={{ width: '100%', background: 'var(--surface-2)', border: '1.5px solid var(--border)', borderRadius: '10px', color: 'var(--text)', fontSize: '15px', padding: '12px 14px', minHeight: '58px', fontFamily: 'inherit', outline: 'none', resize: 'vertical', lineHeight: 1.4 }}
             />
+            {form.note.length >= 160 && (
+              <p style={{ margin: '5px 2px 0', textAlign: 'right', fontSize: '11px', fontVariantNumeric: 'tabular-nums', color: form.note.length >= 200 ? '#f59e0b' : 'var(--text-muted)' }}>
+                {200 - form.note.length} left
+              </p>
+            )}
           </Field>
 
           <button type="submit" disabled={saving} style={{
