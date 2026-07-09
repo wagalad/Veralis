@@ -6,11 +6,26 @@ import { useScoutingEntries } from '../hooks/useScoutingEntries'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import OptionGroup from '../components/OptionGroup'
 
-const DRIVETRAIN_LABELS = { tank: 'Tank', mecanum: 'Mecanum', xdrive: 'X-drive', other: 'Other/unsure' }
-const INTAKE_LABELS    = { strong: 'Strong', okay: 'Okay', weak: 'Weak', none: 'None/unsure' }
-const SCORING_LABELS   = { fast: 'Fast', average: 'Average', slow: 'Slow', cant_tell: "Couldn't tell" }
+const SCORING_LABELS = { fast: 'Fast', average: 'Average', slow: 'Slow', cant_tell: "Couldn't tell" }
 
-const emptyForm = { drivetrain: null, intake: null, scoring: null, autonomous: null, reliability: null, photo: null, note: '' }
+// Threat level is the headline eye-test judgment; each level carries a heat color.
+const THREAT_META = {
+  low:        { label: 'Low',        color: '#22c55e' },
+  medium:     { label: 'Medium',     color: '#f59e0b' },
+  high:       { label: 'High',       color: '#fb923c' },
+  must_scout: { label: 'Must-scout', color: 'var(--accent)' },
+}
+const THREAT_ORDER = ['low', 'medium', 'high', 'must_scout']
+const PLAY_CHIPS = ['Rush early', 'Avoid', 'Great pick', 'Exploit auto', 'Play our game']
+
+// Eye-test fields first (how a robot PLAYS); drivetrain/intake are specs, kept
+// under "More details". All optional — a scout may not assess everything.
+const emptyForm = {
+  threat_level: null, scoring: null, under_defense: null, driver_skill: null,
+  stability: null, autonomous: null, reliability: null, how_to_play: '',
+  note: '', photo: null,
+  drivetrain: null, intake: null,
+}
 
 export default function Scout() {
   const { user } = useAuth()
@@ -28,6 +43,7 @@ export default function Scout() {
   const [teamInput, setTeamInput] = useState('')
   const [lastScouted, setLastScouted] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [showMore, setShowMore] = useState(false)
   const photoRef = useRef(null)
 
   function setField(field, value) { setForm(f => ({ ...f, [field]: value })) }
@@ -134,22 +150,8 @@ export default function Scout() {
       <form onSubmit={handleSubmit}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
 
-          <Field label="Drivetrain">
-            <OptionGroup value={form.drivetrain} onChange={v => setField('drivetrain', v)} options={[
-              { value: 'tank', label: 'Tank' },
-              { value: 'mecanum', label: 'Mecanum' },
-              { value: 'xdrive', label: 'X-drive' },
-              { value: 'other', label: 'Other/unsure' },
-            ]} />
-          </Field>
-
-          <Field label="Intake / pickup">
-            <OptionGroup value={form.intake} onChange={v => setField('intake', v)} options={[
-              { value: 'strong', label: 'Strong' },
-              { value: 'okay', label: 'Okay' },
-              { value: 'weak', label: 'Weak' },
-              { value: 'none', label: 'None/unsure' },
-            ]} />
+          <Field label="Threat level">
+            <ThreatGroup value={form.threat_level} onChange={v => setField('threat_level', v)} />
           </Field>
 
           <Field label="Scoring">
@@ -158,6 +160,32 @@ export default function Scout() {
               { value: 'average', label: 'Average' },
               { value: 'slow', label: 'Slow' },
               { value: 'cant_tell', label: "Couldn't tell" },
+            ]} />
+          </Field>
+
+          <Field label="Under defense" hint="how they hold up when defended">
+            <OptionGroup value={form.under_defense} onChange={v => setField('under_defense', v)} options={[
+              { value: 'folds', label: 'Folds' },
+              { value: 'handles', label: 'Handles it' },
+              { value: 'unstoppable', label: 'Unstoppable' },
+              { value: 'didnt_see', label: "Didn't see" },
+            ]} />
+          </Field>
+
+          <Field label="Driver skill">
+            <OptionGroup value={form.driver_skill} onChange={v => setField('driver_skill', v)} options={[
+              { value: 'struggles', label: 'Struggles' },
+              { value: 'decent', label: 'Decent' },
+              { value: 'skilled', label: 'Skilled' },
+              { value: 'didnt_see', label: "Didn't see" },
+            ]} />
+          </Field>
+
+          <Field label="Stability">
+            <OptionGroup value={form.stability} onChange={v => setField('stability', v)} options={[
+              { value: 'tippy', label: 'Tippy' },
+              { value: 'solid', label: 'Solid' },
+              { value: 'rock_solid', label: 'Rock-solid' },
             ]} />
           </Field>
 
@@ -175,7 +203,25 @@ export default function Scout() {
               options={[1,2,3,4,5].map(n => ({ value: n, label: String(n) }))} />
           </Field>
 
-          <Field label="Photo">
+          <Field label="How to play them" hint="the actionable verdict">
+            <HowToPlay value={form.how_to_play} onChange={v => setField('how_to_play', v)} />
+          </Field>
+
+          <Field label="Note" optional>
+            <textarea value={form.note} onChange={e => setField('note', e.target.value)}
+              placeholder="e.g. exposed intake, panics under pressure…"
+              maxLength={80}
+              rows={2}
+              style={{ width: '100%', background: 'var(--surface-2)', border: '1.5px solid var(--border)', borderRadius: '10px', color: 'var(--text)', fontSize: '15px', padding: '12px 14px', minHeight: '54px', fontFamily: 'inherit', outline: 'none', resize: 'vertical', lineHeight: 1.4 }}
+            />
+            {form.note.length >= 60 && (
+              <p style={{ margin: '5px 2px 0', textAlign: 'right', fontSize: '11px', fontVariantNumeric: 'tabular-nums', color: form.note.length >= 80 ? '#f59e0b' : 'var(--text-muted)' }}>
+                {80 - form.note.length} left
+              </p>
+            )}
+          </Field>
+
+          <Field label="Photo" optional>
             <input ref={photoRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handlePhoto} />
             <button type="button" className="v-btn" onClick={() => photoRef.current?.click()} style={{
               width: '100%', minHeight: '52px',
@@ -191,19 +237,34 @@ export default function Scout() {
             </button>
           </Field>
 
-          <Field label="Quick note" optional>
-            <textarea value={form.note} onChange={e => setField('note', e.target.value)}
-              placeholder="Short phrase — e.g. fast cycles but weak on defense, strong autonomous"
-              maxLength={200}
-              rows={2}
-              style={{ width: '100%', background: 'var(--surface-2)', border: '1.5px solid var(--border)', borderRadius: '10px', color: 'var(--text)', fontSize: '15px', padding: '12px 14px', minHeight: '58px', fontFamily: 'inherit', outline: 'none', resize: 'vertical', lineHeight: 1.4 }}
-            />
-            {form.note.length >= 160 && (
-              <p style={{ margin: '5px 2px 0', textAlign: 'right', fontSize: '11px', fontVariantNumeric: 'tabular-nums', color: form.note.length >= 200 ? '#f59e0b' : 'var(--text-muted)' }}>
-                {200 - form.note.length} left
-              </p>
+          {/* Robot specs — low eye-test value, collapsed so the fast path stays lean */}
+          <div>
+            <button type="button" className="v-btn" onClick={() => setShowMore(s => !s)}
+              style={{ display: 'flex', alignItems: 'center', gap: '7px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontFamily: 'inherit', fontSize: '13px', fontWeight: '600', padding: '2px 0' }}>
+              <span style={{ fontSize: '10px' }}>{showMore ? '▲' : '▼'}</span>
+              {showMore ? 'Hide robot specs' : 'More details · drivetrain, intake'}
+            </button>
+            {showMore && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '22px', marginTop: '16px' }}>
+                <Field label="Drivetrain" optional>
+                  <OptionGroup value={form.drivetrain} onChange={v => setField('drivetrain', v)} options={[
+                    { value: 'tank', label: 'Tank' },
+                    { value: 'mecanum', label: 'Mecanum' },
+                    { value: 'xdrive', label: 'X-drive' },
+                    { value: 'other', label: 'Other/unsure' },
+                  ]} />
+                </Field>
+                <Field label="Intake / pickup" optional>
+                  <OptionGroup value={form.intake} onChange={v => setField('intake', v)} options={[
+                    { value: 'strong', label: 'Strong' },
+                    { value: 'okay', label: 'Okay' },
+                    { value: 'weak', label: 'Weak' },
+                    { value: 'none', label: 'None/unsure' },
+                  ]} />
+                </Field>
+              </div>
             )}
-          </Field>
+          </div>
 
           <button className="v-btn v-btn-accent" type="submit" disabled={saving} style={{
             width: '100%', height: '58px',
@@ -264,18 +325,95 @@ function Field({ label, hint, optional, children }) {
   )
 }
 
+// Threat level — the prominent, heat-colored headline judgment. Single tap.
+function ThreatGroup({ value, onChange }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+      {THREAT_ORDER.map(key => {
+        const { label, color } = THREAT_META[key]
+        const active = value === key
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onChange(active ? null : key)}
+            style={{
+              minHeight: '56px', padding: '10px 4px', borderRadius: '10px', cursor: 'pointer',
+              border: `1.5px solid ${active ? color : 'var(--border)'}`,
+              background: active ? `color-mix(in oklch, ${color} 16%, transparent)` : 'var(--surface-2)',
+              color: active ? color : 'var(--text)',
+              fontSize: '14px', fontWeight: active ? '700' : '400', lineHeight: '1.15',
+              transition: 'border-color 0.1s, background 0.1s, color 0.1s',
+              WebkitUserSelect: 'none', userSelect: 'none',
+            }}
+          >
+            {label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// How to play them — quick-select chips, or type a short custom verdict.
+function HowToPlay({ value, onChange }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+        {PLAY_CHIPS.map(chip => {
+          const active = value === chip
+          return (
+            <button
+              key={chip}
+              type="button"
+              onClick={() => onChange(active ? '' : chip)}
+              style={{
+                padding: '10px 14px', borderRadius: '999px', cursor: 'pointer',
+                border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                background: active ? 'rgba(204,0,0,0.13)' : 'var(--surface-2)',
+                color: active ? 'var(--accent)' : 'var(--text)',
+                fontSize: '13px', fontWeight: active ? '700' : '500',
+                WebkitUserSelect: 'none', userSelect: 'none',
+              }}
+            >
+              {chip}
+            </button>
+          )
+        })}
+      </div>
+      <input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder="or type a quick verdict…"
+        maxLength={80}
+        style={{ width: '100%', height: '46px', background: 'var(--surface-2)', border: '1.5px solid var(--border)', borderRadius: '10px', color: 'var(--text)', fontSize: '14px', padding: '0 14px', fontFamily: 'inherit', outline: 'none' }}
+      />
+    </div>
+  )
+}
+
 function ScoutedCard({ entry }) {
   const teamNum = entry.scouted_team_number ?? entry.teamNumber
   const stars = entry.reliability ? '★'.repeat(entry.reliability) + '☆'.repeat(5 - entry.reliability) : null
-  const tags = [DRIVETRAIN_LABELS[entry.drivetrain], INTAKE_LABELS[entry.intake], SCORING_LABELS[entry.scoring]].filter(Boolean)
+  const threat = THREAT_META[entry.threat_level]
+  const tags = [SCORING_LABELS[entry.scoring], entry.how_to_play].filter(Boolean)
   const pending = entry._synced === false
 
   return (
     <div style={{ background: 'var(--surface)', border: `1px solid ${pending ? 'rgba(251,191,36,0.3)' : 'var(--border)'}`, borderRadius: '10px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
       <span style={{ fontWeight: '700', fontSize: '15px', minWidth: '58px' }}>{teamNum}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        {stars && <div style={{ color: '#f59e0b', fontSize: '12px', letterSpacing: '1px' }}>{stars}</div>}
-        {tags.length > 0 && <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tags.join(' · ')}</div>}
+        {(threat || stars) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {threat && (
+              <span style={{ fontSize: '11px', fontWeight: '700', color: threat.color, border: `1px solid ${threat.color}`, background: `color-mix(in oklch, ${threat.color} 14%, transparent)`, borderRadius: '999px', padding: '1px 8px' }}>
+                {threat.label}
+              </span>
+            )}
+            {stars && <span style={{ color: '#f59e0b', fontSize: '12px', letterSpacing: '1px' }}>{stars}</span>}
+          </div>
+        )}
+        {tags.length > 0 && <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tags.join(' · ')}</div>}
       </div>
       {entry.note && <span style={{ fontSize: '12px', color: 'var(--text-muted)', maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{entry.note}</span>}
       {pending && <span style={{ fontSize: '11px', color: '#fbbf24', flexShrink: 0 }}>pending</span>}
