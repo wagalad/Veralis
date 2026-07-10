@@ -127,11 +127,63 @@ export function useScoutingEntries(team) {
     return localEntry
   }
 
+  // Edit an existing entry. RLS enforces author-only edits (created_by =
+  // auth.uid()); this only surfaces the affordance for entries the user made.
+  async function update(entry, scoutedTeamNumber, form, photoFile) {
+    const fields = {
+      scouted_team_number: scoutedTeamNumber,
+      threat_level: form.threat_level,
+      scoring: form.scoring,
+      under_defense: form.under_defense,
+      driver_skill: form.driver_skill,
+      stability: form.stability,
+      autonomous: form.autonomous,
+      reliability: form.reliability,
+      how_to_play: form.how_to_play?.trim() || null,
+      note: form.note?.trim() || null,
+      drivetrain: form.drivetrain,
+      intake: form.intake,
+    }
+
+    // Not-yet-synced local entry: patch localStorage; it syncs as an insert later.
+    if (!entry.id) {
+      const updated = loadPending(team.id).map(e =>
+        e._local_id === entry._local_id ? { ...e, ...fields } : e
+      )
+      savePending(team.id, updated)
+      setPendingState(updated)
+      return { ...entry, ...fields }
+    }
+
+    // Synced entry: optionally replace the photo, then update in Supabase.
+    let photoPatch = {}
+    if (photoFile) {
+      const { data: upload } = await supabase.storage
+        .from('scout-photos')
+        .upload(`${team.id}/${entry.id}-${crypto.randomUUID()}`, photoFile, { contentType: photoFile.type })
+      if (upload) photoPatch = { photo_url: upload.path }
+    }
+
+    const { data, error } = await supabase
+      .from('scouting_entries')
+      .update({ ...fields, ...photoPatch })
+      .eq('id', entry.id)
+      .select()
+      .single()
+
+    if (!error && data) {
+      setSynced(prev => prev.map(e => (e.id === data.id ? data : e)))
+      return data
+    }
+
+    return null
+  }
+
   // Pending entries shown first (immediate feedback), then synced (from DB / teammates)
   const entries = [
     ...pending.map(e => ({ ...e, _synced: false })),
     ...synced.map(e => ({ ...e, _synced: true })),
   ]
 
-  return { entries, loading, save, refresh: fetchSynced }
+  return { entries, loading, save, update, refresh: fetchSynced }
 }

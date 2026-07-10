@@ -187,10 +187,23 @@ create policy "scouting_entries: team members can insert"
     )
   );
 
-create policy "scouting_entries: team members can update"
+-- Only the author may edit their own entry (created_by = auth.uid()), and the
+-- WITH CHECK mirrors USING so an edit can't reassign created_by or move the row
+-- to another team. See migration-v17.
+create policy "scouting_entries: authors can update own entries"
   on public.scouting_entries for update
   using (
     public.mfa_satisfied()
+    and auth.uid() = created_by
+    and exists (
+      select 1 from public.team_memberships
+      where team_memberships.team_id = scouting_entries.team_id
+        and team_memberships.user_id = auth.uid()
+    )
+  )
+  with check (
+    public.mfa_satisfied()
+    and auth.uid() = created_by
     and exists (
       select 1 from public.team_memberships
       where team_memberships.team_id = scouting_entries.team_id
