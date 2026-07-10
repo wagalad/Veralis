@@ -59,9 +59,15 @@ export default function MyTeam() {
         <TeamSetup createTeam={createTeam} joinTeam={joinTeam} />
       )}
 
-      {/* Read-only log of the whole team's scouting output */}
+      {/* Log of the whole team's scouting output — your own entries are editable */}
       {team && (
-        <ScoutingLog team={team} getMembers={getMembers} currentUserId={user.id} onScout={() => navigate('/scout')} />
+        <ScoutingLog
+          team={team}
+          getMembers={getMembers}
+          currentUserId={user.id}
+          onScout={() => navigate('/scout')}
+          onEditEntry={(entry) => navigate('/scout', { state: { editEntry: entry } })}
+        />
       )}
 
     </div>
@@ -91,7 +97,7 @@ function timeAgo(iso) {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function ScoutingLog({ team, getMembers, currentUserId, onScout }) {
+function ScoutingLog({ team, getMembers, currentUserId, onScout, onEditEntry }) {
   const { entries, loading } = useScoutingEntries(team)
   const [members, setMembers] = useState([])
   const [teamFilter, setTeamFilter] = useState('')
@@ -189,6 +195,8 @@ function ScoutingLog({ team, getMembers, currentUserId, onScout }) {
                   key={key(e)}
                   entry={e}
                   scout={scoutName(e.created_by)}
+                  canEdit={e.created_by === currentUserId}
+                  onEdit={() => onEditEntry(e)}
                   open={expanded === key(e)}
                   onToggle={() => setExpanded(expanded === key(e) ? null : key(e))}
                 />
@@ -210,7 +218,7 @@ function ScoutingLog({ team, getMembers, currentUserId, onScout }) {
   )
 }
 
-function EntryRow({ entry, scout, open, onToggle }) {
+function EntryRow({ entry, scout, canEdit, onEdit, open, onToggle }) {
   const threat = THREAT[entry.threat_level]
   const stars = entry.reliability ? '★'.repeat(entry.reliability) + '☆'.repeat(5 - entry.reliability) : null
   const summary = [SCORE[entry.scoring], entry.how_to_play].filter(Boolean)
@@ -277,9 +285,19 @@ function EntryRow({ entry, scout, open, onToggle }) {
               <p style={{ margin: 0, fontSize: '13px', color: 'var(--text)', lineHeight: 1.5, fontStyle: 'italic' }}>"{entry.note}"</p>
             </div>
           )}
-          <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>
-            Scouted by <span style={{ color: 'var(--text)', fontWeight: '600' }}>{scout}</span>
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginTop: '4px' }}>
+            <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)' }}>
+              Scouted by <span style={{ color: 'var(--text)', fontWeight: '600' }}>{scout}</span>
+            </p>
+            {canEdit && (
+              <button
+                onClick={onEdit}
+                style={{ flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--accent)', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
+              >
+                Edit report
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

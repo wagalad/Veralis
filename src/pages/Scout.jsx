@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTeam } from '../hooks/useTeam'
 import { useScoutingEntries } from '../hooks/useScoutingEntries'
@@ -33,6 +33,7 @@ export default function Scout() {
   const { entries, loading: entriesLoading, save, update } = useScoutingEntries(team)
   const online = useOnlineStatus()
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
 
   const [form, setForm] = useState(emptyForm)
@@ -80,6 +81,18 @@ export default function Scout() {
     setForm(emptyForm)
     if (photoRef.current) photoRef.current.value = ''
   }
+
+  // Deep-link into edit mode from another page (e.g. My Team's scouting log).
+  // The entry to edit is handed over via router state; clear it after applying
+  // so a refresh or back-navigation doesn't re-open the editor.
+  useEffect(() => {
+    const entry = location.state?.editEntry
+    if (entry) {
+      startEdit(entry)
+      navigate('/scout', { replace: true, state: null })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key])
 
   function handlePhoto(e) {
     const file = e.target.files?.[0]
