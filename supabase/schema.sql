@@ -187,14 +187,15 @@ create policy "scouting_entries: team members can insert"
     )
   );
 
--- Only the author may edit their own entry (created_by = auth.uid()), and the
--- WITH CHECK mirrors USING so an edit can't reassign created_by or move the row
--- to another team. See migration-v17.
-create policy "scouting_entries: authors can update own entries"
+-- Any team member may edit their team's entries (collaborative pool). USING
+-- restricts edits to entries whose team the caller belongs to, and the matching
+-- WITH CHECK prevents moving a row into another team. Cross-team isolation and
+-- the MFA gate are preserved. created_by is held immutable by a trigger (below)
+-- so authorship can't be reassigned. See migration-v17 (author-only) then v18.
+create policy "scouting_entries: team members can update"
   on public.scouting_entries for update
   using (
     public.mfa_satisfied()
-    and auth.uid() = created_by
     and exists (
       select 1 from public.team_memberships
       where team_memberships.team_id = scouting_entries.team_id
@@ -203,13 +204,29 @@ create policy "scouting_entries: authors can update own entries"
   )
   with check (
     public.mfa_satisfied()
-    and auth.uid() = created_by
     and exists (
       select 1 from public.team_memberships
       where team_memberships.team_id = scouting_entries.team_id
         and team_memberships.user_id = auth.uid()
     )
   );
+
+-- Keep created_by immutable across edits so authorship can't be reassigned when
+-- a teammate edits someone else's report. See migration-v18.
+create or replace function public.scouting_entries_pin_created_by()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.created_by := old.created_by;
+  return new;
+end;
+$$;
+
+drop trigger if exists scouting_entries_pin_created_by on public.scouting_entries;
+create trigger scouting_entries_pin_created_by
+  before update on public.scouting_entries
+  for each row execute function public.scouting_entries_pin_created_by();
 
 create index scouting_entries_team_id_idx     on public.scouting_entries(team_id);
 create index scouting_entries_created_by_idx  on public.scouting_entries(created_by);

@@ -176,7 +176,7 @@ export default function Scout() {
       {/* Edit-mode banner */}
       {editing && (
         <div style={{ background: 'rgba(204,0,0,0.08)', border: '1.5px solid var(--accent)', borderRadius: '10px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-          <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--accent)' }}>Editing your report</span>
+          <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--accent)' }}>Editing report</span>
           <button type="button" onClick={cancelEdit} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '13px', cursor: 'pointer', textDecoration: 'underline' }}>Cancel</button>
         </div>
       )}
@@ -368,7 +368,7 @@ export default function Scout() {
               <ScoutedCard
                 key={entry.id ?? entry._local_id ?? i}
                 entry={entry}
-                canEdit={entry.created_by === user.id}
+                canEdit={true}
                 isEditing={editing && (editing.id ? editing.id === entry.id : editing._local_id === entry._local_id)}
                 onEdit={() => startEdit(entry)}
               />

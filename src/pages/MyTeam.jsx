@@ -195,7 +195,7 @@ function ScoutingLog({ team, getMembers, currentUserId, onScout, onEditEntry }) 
                   key={key(e)}
                   entry={e}
                   scout={scoutName(e.created_by)}
-                  canEdit={e.created_by === currentUserId}
+                  canEdit={true}
                   onEdit={() => onEditEntry(e)}
                   open={expanded === key(e)}
                   onToggle={() => setExpanded(expanded === key(e) ? null : key(e))}

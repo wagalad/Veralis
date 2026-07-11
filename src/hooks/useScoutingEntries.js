@@ -127,8 +127,8 @@ export function useScoutingEntries(team) {
     return localEntry
   }
 
-  // Edit an existing entry. RLS enforces author-only edits (created_by =
-  // auth.uid()); this only surfaces the affordance for entries the user made.
+  // Edit an existing entry. RLS lets any team member edit their team's entries
+  // (created_by is held immutable by a trigger); cross-team edits are blocked.
   async function update(entry, scoutedTeamNumber, form, photoFile) {
     const fields = {
       scouted_team_number: scoutedTeamNumber,
