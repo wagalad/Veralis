@@ -195,6 +195,7 @@ function ScoutingLog({ team, getMembers, currentUserId, onScout, onEditEntry }) 
                   key={key(e)}
                   entry={e}
                   scout={scoutName(e.created_by)}
+                  editor={e.edited_by ? scoutName(e.edited_by) : null}
                   canEdit={true}
                   onEdit={() => onEditEntry(e)}
                   open={expanded === key(e)}
@@ -218,7 +219,7 @@ function ScoutingLog({ team, getMembers, currentUserId, onScout, onEditEntry }) 
   )
 }
 
-function EntryRow({ entry, scout, canEdit, onEdit, open, onToggle }) {
+function EntryRow({ entry, scout, editor, canEdit, onEdit, open, onToggle }) {
   const threat = THREAT[entry.threat_level]
   const stars = entry.reliability ? '★'.repeat(entry.reliability) + '☆'.repeat(5 - entry.reliability) : null
   const summary = [SCORE[entry.scoring], entry.how_to_play].filter(Boolean)
@@ -286,9 +287,16 @@ function EntryRow({ entry, scout, canEdit, onEdit, open, onToggle }) {
             </div>
           )}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginTop: '4px' }}>
-            <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)' }}>
-              Scouted by <span style={{ color: 'var(--text)', fontWeight: '600' }}>{scout}</span>
-            </p>
+            <div>
+              <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)' }}>
+                Scouted by <span style={{ color: 'var(--text)', fontWeight: '600' }}>{scout}</span>
+              </p>
+              {entry.edited_at && (
+                <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>
+                  Edited by <span style={{ color: 'var(--text)', fontWeight: '600' }}>{editor || 'Teammate'}</span> · {timeAgo(entry.edited_at)}
+                </p>
+              )}
+            </div>
             {canEdit && (
               <button
                 onClick={onEdit}

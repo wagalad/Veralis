@@ -159,7 +159,9 @@ create table public.scouting_entries (
   note                 text check (note is null or char_length(note) <= 200),
   photo_url            text check (photo_url is null or char_length(photo_url) <= 500),
   created_by           uuid references auth.users(id) not null,
-  created_at           timestamptz default now()
+  created_at           timestamptz default now(),
+  edited_by            uuid references auth.users(id),
+  edited_at            timestamptz
 );
 
 alter table public.scouting_entries enable row level security;
@@ -211,22 +213,26 @@ create policy "scouting_entries: team members can update"
     )
   );
 
--- Keep created_by immutable across edits so authorship can't be reassigned when
--- a teammate edits someone else's report. See migration-v18.
-create or replace function public.scouting_entries_pin_created_by()
+-- On every edit: keep created_by immutable (authorship can't be reassigned when
+-- a teammate edits someone else's report) and stamp who edited it and when.
+-- edited_by/edited_at are set server-side here so a client can't forge them.
+-- See migration-v18 (pin created_by) and migration-v19 (edit attribution).
+create or replace function public.scouting_entries_touch_edit()
 returns trigger
 language plpgsql
 as $$
 begin
-  new.created_by := old.created_by;
+  new.created_by := old.created_by;  -- authorship is immutable
+  new.edited_by  := auth.uid();      -- who edited (server-set, unspoofable)
+  new.edited_at  := now();           -- when
   return new;
 end;
 $$;
 
-drop trigger if exists scouting_entries_pin_created_by on public.scouting_entries;
-create trigger scouting_entries_pin_created_by
+drop trigger if exists scouting_entries_touch_edit on public.scouting_entries;
+create trigger scouting_entries_touch_edit
   before update on public.scouting_entries
-  for each row execute function public.scouting_entries_pin_created_by();
+  for each row execute function public.scouting_entries_touch_edit();
 
 create index scouting_entries_team_id_idx     on public.scouting_entries(team_id);
 create index scouting_entries_created_by_idx  on public.scouting_entries(created_by);
