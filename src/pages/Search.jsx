@@ -36,10 +36,10 @@ export default function Search() {
 
   const [searchParams] = useSearchParams()
 
-  // How many of the results to warm up immediately after a search. A name
-  // search can return many teams, so we cap the eager prefetch and let the
-  // rest load lazily on click.
-  const PREFETCH_LIMIT = 6
+  // Prefetch every result on search, but only this many teams' data loads at a
+  // time. This keeps click latency ~zero without firing hundreds of VEX calls
+  // at once on a broad name search (which the API would rate-limit).
+  const PREFETCH_CONCURRENCY = 8
 
   // Arrived via /search?q=… (Quick Lookup, "Full profile" / recent-scouting
   // links): pre-fill the box and run the search automatically.
@@ -81,9 +81,9 @@ export default function Search() {
     try {
       const teams = await searchTeams(q, prog)
       setResults(teams)
-      // Warm up the top results so expanding a card is instant. The rest stay
-      // lazy (loaded on click) to bound VEX API traffic on broad name searches.
-      ;(teams ?? []).slice(0, PREFETCH_LIMIT).forEach(t => loadTeamData(t, prog))
+      // Warm up EVERY result so expanding any card is instant — fed through a
+      // small concurrency pool so a large result set doesn't burst the API.
+      prefetchAll(teams ?? [], prog)
     } catch (err) {
       setSearchError(err.message)
     } finally {
@@ -140,6 +140,20 @@ export default function Search() {
       requestedRef.current.delete(id) // allow a retry on next expand
       setExpandedData(prev => ({ ...prev, [id]: { loading: false, error: err.message } }))
     }
+  }
+
+  // Load all results through a bounded-concurrency pool: PREFETCH_CONCURRENCY
+  // teams load at once, and each finished slot immediately pulls the next team,
+  // so the whole result set is warmed as fast as the API allows.
+  function prefetchAll(teams, prog) {
+    let i = 0
+    const worker = async () => {
+      while (i < teams.length) {
+        const t = teams[i++]
+        await loadTeamData(t, prog)
+      }
+    }
+    for (let w = 0; w < Math.min(PREFETCH_CONCURRENCY, teams.length); w++) worker()
   }
 
   function toggleExpand(vexTeam) {
