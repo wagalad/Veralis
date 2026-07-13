@@ -79,7 +79,15 @@ async function generate(
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ model: MODEL, messages, max_completion_tokens: 500 }),
+    body: JSON.stringify({
+      model: MODEL,
+      messages,
+      // GPT-5 nano is a reasoning model: reasoning tokens count against the
+      // output budget. Keep reasoning minimal for this simple RAG task and give
+      // ample headroom so the visible answer isn't starved to empty.
+      reasoning_effort: 'minimal',
+      max_completion_tokens: 1200,
+    }),
   })
 
   if (!res.ok) {
