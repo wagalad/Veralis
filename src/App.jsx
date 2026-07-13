@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import BottomNav from './components/BottomNav'
 import MfaChallenge from './components/MfaChallenge'
+import { FirstRunTour } from './components/Onboarding'
 import Home from './pages/Home'
 import Search from './pages/Search'
 import Scout from './pages/Scout'
@@ -32,6 +34,18 @@ function Shell() {
   const onLanding = pathname === '/' && !user
   const chromeless = CHROMELESS.includes(pathname) || onLanding
 
+  // Desktop sidebar: pinned (kept open) vs. hover-to-expand. Persisted per device.
+  const [pinned, setPinned] = useState(() => {
+    try { return localStorage.getItem('veralis-sidebar-pinned') === '1' } catch { return false }
+  })
+  function togglePin() {
+    setPinned(p => {
+      const next = !p
+      try { localStorage.setItem('veralis-sidebar-pinned', next ? '1' : '0') } catch { /* ignore */ }
+      return next
+    })
+  }
+
   // A signed-in user with 2FA enabled must pass the code challenge before
   // anything else in the app is reachable.
   if (user && mfaRequired) {
@@ -45,8 +59,8 @@ function Shell() {
   }
 
   return (
-    <div className="app-shell">
-      {!chromeless && <BottomNav />}
+    <div className={`app-shell${!chromeless && pinned ? ' app-shell--pinned' : ''}`}>
+      {!chromeless && <BottomNav pinned={pinned} onTogglePin={togglePin} />}
       <main className={chromeless ? undefined : 'app-main'} style={chromeless ? { flex: 1, overflowY: 'auto' } : undefined}>
         <Routes>
           <Route path="/" element={user ? <Home /> : <Landing />} />
@@ -62,6 +76,8 @@ function Shell() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      {/* First-run tour — only for a signed-in user past the MFA gate */}
+      {user && <FirstRunTour />}
     </div>
   )
 }

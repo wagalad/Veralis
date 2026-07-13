@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTeam } from '../hooks/useTeam'
@@ -30,8 +30,16 @@ export default function Search() {
   // expanded = VEX internal team id; expandedData keyed by same id
   const [expandedId, setExpandedId] = useState(null)
   const [expandedData, setExpandedData] = useState({})
+  // Ids we've already kicked off a data load for (prefetch or click), so we
+  // never fire the same fetch twice.
+  const requestedRef = useRef(new Set())
 
   const [searchParams] = useSearchParams()
+
+  // How many of the results to warm up immediately after a search. A name
+  // search can return many teams, so we cap the eager prefetch and let the
+  // rest load lazily on click.
+  const PREFETCH_LIMIT = 6
 
   // Arrived via /search?q=… (Quick Lookup, "Full profile" / recent-scouting
   // links): pre-fill the box and run the search automatically.
@@ -68,9 +76,14 @@ export default function Search() {
     setSearchError(null)
     setResults(null)
     setExpandedId(null)
+    setExpandedData({})
+    requestedRef.current = new Set()
     try {
       const teams = await searchTeams(q, prog)
       setResults(teams)
+      // Warm up the top results so expanding a card is instant. The rest stay
+      // lazy (loaded on click) to bound VEX API traffic on broad name searches.
+      ;(teams ?? []).slice(0, PREFETCH_LIMIT).forEach(t => loadTeamData(t, prog))
     } catch (err) {
       setSearchError(err.message)
     } finally {
@@ -83,18 +96,17 @@ export default function Search() {
     runSearch(query, program)
   }
 
-  async function toggleExpand(vexTeam) {
+  // Fetch a team's VEX stats, our scouting, and this/last season ratings, and
+  // store them under expandedData[id]. Deduped via requestedRef so prefetch +
+  // click never double-fetch. Used by both the eager prefetch and toggleExpand.
+  async function loadTeamData(vexTeam, prog = program) {
     const id = vexTeam.id
-    if (expandedId === id) { setExpandedId(null); return }
+    if (requestedRef.current.has(id)) return
+    requestedRef.current.add(id)
 
-    setExpandedId(id)
-    if (expandedData[id]) return // already loaded
-
-    // Mark as loading
     setExpandedData(prev => ({ ...prev, [id]: { loading: true } }))
 
     try {
-      // Fetch VEX stats, scouting entries, and this + last season's matches in parallel
       const [stats, scoutingRes, seasonMatches, prevMatches] = await Promise.allSettled([
         getTeamStats(id),
         supabase
@@ -102,8 +114,8 @@ export default function Search() {
           .select('*')
           .eq('scouted_team_number', vexTeam.number)
           .order('created_at', { ascending: false }),
-        getTeamSeasonMatches(id, program),
-        getTeamSeasonMatches(id, program, 'previous'),
+        getTeamSeasonMatches(id, prog),
+        getTeamSeasonMatches(id, prog, 'previous'),
       ])
 
       const rating = seasonMatches.status === 'fulfilled'
@@ -125,8 +137,16 @@ export default function Search() {
         },
       }))
     } catch (err) {
+      requestedRef.current.delete(id) // allow a retry on next expand
       setExpandedData(prev => ({ ...prev, [id]: { loading: false, error: err.message } }))
     }
+  }
+
+  function toggleExpand(vexTeam) {
+    const id = vexTeam.id
+    if (expandedId === id) { setExpandedId(null); return }
+    setExpandedId(id)
+    loadTeamData(vexTeam) // no-op if already prefetched / loading
   }
 
   return (

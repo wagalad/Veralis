@@ -40,8 +40,6 @@ export default function Scout() {
   const [scoutedTeam, setScoutedTeam] = useState(
     searchParams.get('team')?.toUpperCase() ?? '16858A'
   )
-  const [editingTeam, setEditingTeam] = useState(false)
-  const [teamInput, setTeamInput] = useState('')
   const [lastScouted, setLastScouted] = useState(null)
   const [lastWasEdit, setLastWasEdit] = useState(false)
   const [editing, setEditing] = useState(null) // entry being edited, or null
@@ -73,7 +71,7 @@ export default function Scout() {
     setShowMore(Boolean(entry.drivetrain || entry.intake))
     setLastScouted(null)
     if (photoRef.current) photoRef.current.value = ''
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    scrollAppToTop()
   }
 
   function cancelEdit() {
@@ -99,25 +97,20 @@ export default function Scout() {
     if (file) setField('photo', file)
   }
 
-  function confirmTeamEdit() {
-    const v = teamInput.trim().toUpperCase()
-    if (v) setScoutedTeam(v)
-    setEditingTeam(false)
-    setTeamInput('')
-  }
-
   async function handleSubmit(e) {
     e.preventDefault()
+    const team = scoutedTeam.trim().toUpperCase()
+    if (!team) return
     setSaving(true)
     if (editing) {
-      await update(editing, scoutedTeam, form, form.photo)
+      await update(editing, team, form, form.photo)
       setEditing(null)
       setLastWasEdit(true)
     } else {
-      await save(scoutedTeam, form, form.photo)
+      await save(team, form, form.photo)
       setLastWasEdit(false)
     }
-    setLastScouted(scoutedTeam)
+    setLastScouted(team)
     setForm(emptyForm)
     if (photoRef.current) photoRef.current.value = ''
     setSaving(false)
@@ -181,33 +174,30 @@ export default function Scout() {
         </div>
       )}
 
-      {/* Team being scouted */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <div style={{ flex: 1 }}>
-          <p style={labelStyle}>Scouting</p>
-          {editingTeam ? (
-            <input
-              autoFocus
-              value={teamInput}
-              onChange={e => setTeamInput(e.target.value.toUpperCase())}
-              onBlur={confirmTeamEdit}
-              onKeyDown={e => e.key === 'Enter' && confirmTeamEdit()}
-              placeholder={scoutedTeam}
-              maxLength={12}
-              style={{ fontSize: '28px', fontWeight: '800', background: 'transparent', border: 'none', borderBottom: '2px solid var(--accent)', color: 'var(--text)', outline: 'none', width: '120px', letterSpacing: '-0.5px' }}
-            />
-          ) : (
-            <h1 style={{ margin: 0, fontSize: '30px', fontWeight: '800', letterSpacing: '-0.5px' }}>{scoutedTeam}</h1>
-          )}
-        </div>
-        <button
-          type="button"
-          className="v-btn v-btn-ghost" onClick={() => { setTeamInput(scoutedTeam); setEditingTeam(true) }}
-          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer', minHeight: '40px' }}
-        >
-          Change
-        </button>
+      {/* Team being scouted — an obvious, always-editable text box */}
+      <div style={{ marginBottom: '16px' }}>
+        <label htmlFor="scout-team" style={{ ...labelStyle, display: 'block', marginBottom: '8px' }}>
+          Team number{editing ? ' · editing report' : ''}
+        </label>
+        <input
+          id="scout-team"
+          value={scoutedTeam}
+          onChange={e => setScoutedTeam(e.target.value.toUpperCase())}
+          placeholder="e.g. 16858A"
+          maxLength={12}
+          autoComplete="off"
+          spellCheck={false}
+          style={{
+            width: '100%', height: '56px', padding: '0 16px', boxSizing: 'border-box',
+            background: 'var(--surface-2)', border: '1.5px solid var(--border)', borderRadius: '12px',
+            color: 'var(--text)', fontFamily: 'inherit', fontSize: '24px', fontWeight: '800',
+            letterSpacing: '0.02em', outline: 'none',
+          }}
+        />
       </div>
+
+      {/* Prior intel — what our team already knows about this robot (computed, no API) */}
+      <PriorIntel entries={entries} teamNumber={scoutedTeam} />
 
       <form onSubmit={handleSubmit}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
@@ -344,15 +334,17 @@ export default function Scout() {
                 Cancel
               </button>
             )}
-            <button className="v-btn v-btn-accent" type="submit" disabled={saving} style={{
+            {(() => { const disabled = saving || !scoutedTeam.trim(); return (
+            <button className="v-btn v-btn-accent" type="submit" disabled={disabled} style={{
               flex: 1, height: '58px',
-              background: saving ? 'var(--surface-2)' : 'var(--accent)',
-              color: saving ? 'var(--text-muted)' : '#fff',
+              background: disabled ? 'var(--surface-2)' : 'var(--accent)',
+              color: disabled ? 'var(--text-muted)' : '#fff',
               border: 'none', borderRadius: '12px', fontSize: '17px', fontWeight: '700',
-              cursor: saving ? 'default' : 'pointer',
+              cursor: disabled ? 'default' : 'pointer',
             }}>
-              {saving ? (editing ? 'Updating…' : 'Saving…') : `${editing ? 'Update' : 'Save'} — ${scoutedTeam}`}
+              {saving ? (editing ? 'Updating…' : 'Saving…') : !scoutedTeam.trim() ? 'Enter a team number' : `${editing ? 'Update' : 'Save'} — ${scoutedTeam.trim()}`}
             </button>
+            )})()}
           </div>
         </div>
       </form>
@@ -510,6 +502,79 @@ function ScoutedCard({ entry, canEdit, isEditing, onEdit }) {
         }}>
           {isEditing ? 'Editing' : 'Edit'}
         </button>
+      )}
+    </div>
+  )
+}
+
+// The app scrolls inside <main class="app-main">, not the window — so scroll
+// that container (falls back to window if the layout ever changes).
+function scrollAppToTop() {
+  const main = document.querySelector('.app-main')
+  if (main) main.scrollTo({ top: 0, behavior: 'smooth' })
+  else window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+// Most-frequent value in a list (ignoring null/undefined); null if none.
+function mostCommon(values) {
+  const counts = new Map()
+  for (const v of values) {
+    if (v == null) continue
+    counts.set(v, (counts.get(v) ?? 0) + 1)
+  }
+  let best = null, bestN = 0
+  for (const [v, n] of counts) if (n > bestN) { best = v; bestN = n }
+  return best
+}
+
+// Computed summary of our team's existing reports on the team being scouted.
+// Zero API calls — derived from the entries already loaded for the pool.
+function PriorIntel({ entries, teamNumber }) {
+  const num = (teamNumber ?? '').trim().toUpperCase()
+  if (!num) return null
+
+  const mine = entries.filter(e => (e.scouted_team_number ?? e.teamNumber)?.toUpperCase() === num)
+  if (mine.length === 0) return null
+
+  const reliabilities = mine.map(e => e.reliability).filter(r => typeof r === 'number')
+  const avgRel = reliabilities.length
+    ? Math.round((reliabilities.reduce((a, b) => a + b, 0) / reliabilities.length) * 10) / 10
+    : null
+  const threatKey = mostCommon(mine.map(e => e.threat_level))
+  const threat = threatKey ? THREAT_META[threatKey] : null
+  const scoringKey = mostCommon(mine.map(e => e.scoring))
+  const latest = [...mine].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0]
+  const latestVerdict = latest?.how_to_play || latest?.note || null
+
+  const chip = (text, color) => (
+    <span style={{
+      fontSize: '11px', fontWeight: '700', color: color ?? 'var(--text)',
+      border: `1px solid ${color ?? 'var(--border)'}`,
+      background: color ? `color-mix(in oklch, ${color} 14%, transparent)` : 'var(--surface-2)',
+      borderRadius: '999px', padding: '2px 9px',
+    }}>{text}</span>
+  )
+
+  return (
+    <div style={{
+      marginBottom: '24px', padding: '13px 15px', borderRadius: '12px',
+      background: 'var(--surface)', border: '1px solid var(--border)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px', marginBottom: '10px' }}>
+        <p style={{ ...labelStyle, margin: 0 }}>Prior intel · {num}</p>
+        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+          {mine.length} report{mine.length === 1 ? '' : 's'}
+        </span>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px', alignItems: 'center' }}>
+        {threat && chip(`${threat.label} threat`, threat.color)}
+        {avgRel != null && chip(`Reliability ${avgRel}/5`)}
+        {scoringKey && chip(SCORING_LABELS[scoringKey])}
+      </div>
+      {latestVerdict && (
+        <p style={{ margin: '10px 0 0', fontSize: '13px', color: 'var(--text)', lineHeight: 1.45 }}>
+          <span style={{ color: 'var(--text-muted)' }}>Latest: </span>"{latestVerdict}"
+        </p>
       )}
     </div>
   )
