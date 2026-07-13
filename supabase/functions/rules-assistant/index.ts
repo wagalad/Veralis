@@ -11,6 +11,9 @@ const RATE_WINDOW = '1 hour'    // … per user per this window
 const MATCH_COUNT = 6           // KB entries retrieved per question
 const MAX_HISTORY = 6           // prior messages kept for context
 const MAX_QUESTION = 1000       // chars
+// Cosine similarity below which we treat the KB as having nothing relevant and
+// cleanly defer to the manual — no chat-model call, no quota spent. Tunable.
+const MIN_SIMILARITY = 0.28
 
 // ── Models — swap here (one line each) to change providers/models ─────────────
 const MODEL = 'gpt-5-nano'
@@ -37,7 +40,7 @@ async function mfaBlocked(admin: any, jwt: string, userId: string): Promise<bool
   return (data?.factors ?? []).some((f: { status: string }) => f.status === 'verified')
 }
 
-interface Chunk { rule_no: string; section: string; title: string; content: string }
+interface Chunk { rule_no: string; section: string; title: string; content: string; similarity: number }
 
 // Embed the question with OpenAI. Returns a 1536-d vector.
 async function embedQuestion(apiKey: string, text: string): Promise<number[]> {
@@ -126,16 +129,8 @@ Deno.serve(async (req) => {
   const apiKey = Deno.env.get('OPENAI_API_KEY')
   if (!apiKey) return json({ error: 'The rules assistant is not configured on the server.' }, 503)
 
-  // Per-user rate limit (charged before the model call).
-  const { data: allowed, error: rlErr } = await admin.rpc('consume_assistant_quota', {
-    p_user_id: user.id, p_limit: RATE_LIMIT, p_window: RATE_WINDOW,
-  })
-  if (rlErr) return json({ error: 'Something went wrong. Please try again.' }, 500)
-  if (allowed === false) {
-    return json({ error: "You've asked a lot of questions recently. Try again a bit later." }, 429)
-  }
-
-  // Retrieve the most relevant KB entries for this question.
+  // Retrieve first — the embedding call is ~free. This lets us gate on relevance
+  // BEFORE spending the user's quota or making the (pricier) chat-model call.
   let chunks: Chunk[]
   try {
     const vec = await embedQuestion(apiKey, question)
@@ -153,9 +148,28 @@ Deno.serve(async (req) => {
     return json({ error: 'Something went wrong. Please try again.' }, 500)
   }
 
-  const context = chunks.length
-    ? chunks.map(c => `[${c.rule_no}] ${c.title} (${c.section}): ${c.content}`).join('\n\n')
-    : '(no matching rules found)'
+  // Confidence gate: if nothing in the KB is close to the question, defer to the
+  // manual instead of stretching weak context into a possibly-wrong answer. No
+  // model call, no quota spent — cheap and safe.
+  const topSimilarity = chunks[0]?.similarity ?? 0
+  if (topSimilarity < MIN_SIMILARITY) {
+    return json({
+      answer: "I don't have that one in my rules notes. For this, check the official Game Manual and the VEX Q&A — they're the authoritative source for rulings.",
+      citations: [],
+      deferred: true,
+    })
+  }
+
+  // Relevant match found → this becomes a real model call, so charge quota now.
+  const { data: allowed, error: rlErr } = await admin.rpc('consume_assistant_quota', {
+    p_user_id: user.id, p_limit: RATE_LIMIT, p_window: RATE_WINDOW,
+  })
+  if (rlErr) return json({ error: 'Something went wrong. Please try again.' }, 500)
+  if (allowed === false) {
+    return json({ error: "You've asked a lot of questions recently. Try again a bit later." }, 429)
+  }
+
+  const context = chunks.map(c => `[${c.rule_no}] ${c.title} (${c.section}): ${c.content}`).join('\n\n')
 
   let answer: string
   try {
@@ -164,10 +178,12 @@ Deno.serve(async (req) => {
     return json({ error: 'Could not generate an answer right now. Please try again.' }, 502)
   }
 
-  return json({
-    answer,
-    citations: chunks.map(c => ({ rule_no: c.rule_no, title: c.title })),
-  })
+  // Only cite entries that actually cleared the relevance bar.
+  const citations = chunks
+    .filter(c => (c.similarity ?? 0) >= MIN_SIMILARITY)
+    .map(c => ({ rule_no: c.rule_no, title: c.title }))
+
+  return json({ answer, citations })
 })
 
 function json(body: unknown, status = 200) {
