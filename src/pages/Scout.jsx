@@ -7,6 +7,13 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import OptionGroup from '../components/OptionGroup'
 
 const SCORING_LABELS = { fast: 'Fast', average: 'Average', slow: 'Slow', cant_tell: "Couldn't tell" }
+// Label maps for the expandable entry detail rows (mirrors the My Team log).
+const DEFENSE_LABELS    = { folds: 'Folds', handles: 'Handles it', unstoppable: 'Unstoppable', didnt_see: "Didn't see" }
+const DRIVER_LABELS     = { struggles: 'Struggles', decent: 'Decent', skilled: 'Skilled', didnt_see: "Didn't see" }
+const STABILITY_LABELS  = { tippy: 'Tippy', solid: 'Solid', rock_solid: 'Rock-solid' }
+const AUTO_LABELS       = { strong: 'Strong', works: 'Works', weak_none: 'Weak/none', didnt_see: "Didn't see" }
+const DRIVETRAIN_LABELS = { tank: 'Tank', mecanum: 'Mecanum', xdrive: 'X-drive', other: 'Other/unsure' }
+const INTAKE_LABELS     = { strong: 'Strong', okay: 'Okay', weak: 'Weak', none: 'None/unsure' }
 
 // Threat level is the headline eye-test judgment; each level carries a heat color.
 const THREAT_META = {
@@ -195,9 +202,6 @@ export default function Scout() {
           }}
         />
       </div>
-
-      {/* Prior intel — what our team already knows about this robot (computed, no API) */}
-      <PriorIntel entries={entries} teamNumber={scoutedTeam} />
 
       <form onSubmit={handleSubmit}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
@@ -469,7 +473,9 @@ function HowToPlay({ value, onChange }) {
   )
 }
 
+// Tap to expand into the full report — same interaction as the My Team log.
 function ScoutedCard({ entry, canEdit, isEditing, onEdit }) {
+  const [open, setOpen] = useState(false)
   const teamNum = entry.scouted_team_number ?? entry.teamNumber
   const stars = entry.reliability ? '★'.repeat(entry.reliability) + '☆'.repeat(5 - entry.reliability) : null
   const threat = THREAT_META[entry.threat_level]
@@ -477,35 +483,83 @@ function ScoutedCard({ entry, canEdit, isEditing, onEdit }) {
   const pending = entry._synced === false
 
   return (
-    <div style={{ background: 'var(--surface)', border: `1px solid ${isEditing ? 'var(--accent)' : pending ? 'rgba(251,191,36,0.3)' : 'var(--border)'}`, borderRadius: '10px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-      <span style={{ fontWeight: '700', fontSize: '15px', minWidth: '58px' }}>{teamNum}</span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {(threat || stars) && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            {threat && (
-              <span style={{ fontSize: '11px', fontWeight: '700', color: threat.color, border: `1px solid ${threat.color}`, background: `color-mix(in oklch, ${threat.color} 14%, transparent)`, borderRadius: '999px', padding: '1px 8px' }}>
-                {threat.label}
-              </span>
+    <div style={{ background: 'var(--surface)', border: `1px solid ${isEditing ? 'var(--accent)' : pending ? 'rgba(251,191,36,0.3)' : 'var(--border)'}`, borderRadius: '10px', overflow: 'hidden' }}>
+      {/* Collapsed header — tap anywhere to expand */}
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '12px 14px', fontFamily: 'inherit', color: 'inherit' }}
+      >
+        <span style={{ fontWeight: '700', fontSize: '15px', minWidth: '58px' }}>{teamNum}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {(threat || stars) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {threat && (
+                <span style={{ fontSize: '11px', fontWeight: '700', color: threat.color, border: `1px solid ${threat.color}`, background: `color-mix(in oklch, ${threat.color} 14%, transparent)`, borderRadius: '999px', padding: '1px 8px' }}>
+                  {threat.label}
+                </span>
+              )}
+              {stars && <span style={{ color: '#f59e0b', fontSize: '12px', letterSpacing: '1px' }}>{stars}</span>}
+            </div>
+          )}
+          {tags.length > 0 && <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tags.join(' · ')}</div>}
+        </div>
+        {pending && <span style={{ fontSize: '11px', color: '#fbbf24', flexShrink: 0 }}>pending</span>}
+        <span style={{ flexShrink: 0, fontSize: '16px', color: 'var(--text-muted)', lineHeight: 1, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s' }}>⌄</span>
+      </button>
+
+      {/* Expanded detail */}
+      {open && (
+        <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <DetailRow k="Threat" v={threat?.label} />
+          <DetailRow k="Scoring" v={SCORING_LABELS[entry.scoring]} />
+          <DetailRow k="Under defense" v={DEFENSE_LABELS[entry.under_defense]} />
+          <DetailRow k="Driver skill" v={DRIVER_LABELS[entry.driver_skill]} />
+          <DetailRow k="Stability" v={STABILITY_LABELS[entry.stability]} />
+          <DetailRow k="Autonomous" v={AUTO_LABELS[entry.autonomous]} />
+          <DetailRow k="Reliability" v={entry.reliability ? `${entry.reliability}/5` : null} />
+          <DetailRow k="How to play" v={entry.how_to_play} />
+          <DetailRow k="Drivetrain" v={DRIVETRAIN_LABELS[entry.drivetrain]} />
+          <DetailRow k="Intake" v={INTAKE_LABELS[entry.intake]} />
+          {entry.photo_url && <DetailRow k="Photo" v="Attached" />}
+          {entry.note && (
+            <div style={{ marginTop: '2px' }}>
+              <p style={{ ...detailK, marginBottom: '2px' }}>Note</p>
+              <p style={{ margin: 0, fontSize: '13px', color: 'var(--text)', lineHeight: 1.5, fontStyle: 'italic' }}>"{entry.note}"</p>
+            </div>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginTop: '4px' }}>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+              {entry.created_at ? new Date(entry.created_at).toLocaleDateString() : ''}
+            </span>
+            {canEdit && (
+              <button type="button" onClick={onEdit} aria-label={`Edit ${teamNum} report`} style={{
+                flexShrink: 0, background: 'var(--surface-2)', border: '1px solid var(--border)',
+                color: 'var(--accent)', borderRadius: '8px',
+                padding: '6px 14px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+              }}>
+                {isEditing ? 'Editing' : 'Edit report'}
+              </button>
             )}
-            {stars && <span style={{ color: '#f59e0b', fontSize: '12px', letterSpacing: '1px' }}>{stars}</span>}
           </div>
-        )}
-        {tags.length > 0 && <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tags.join(' · ')}</div>}
-      </div>
-      {entry.note && <span style={{ fontSize: '12px', color: 'var(--text-muted)', maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{entry.note}</span>}
-      {pending && <span style={{ fontSize: '11px', color: '#fbbf24', flexShrink: 0 }}>pending</span>}
-      {canEdit && (
-        <button type="button" onClick={onEdit} aria-label={`Edit ${teamNum} report`} style={{
-          flexShrink: 0, background: 'var(--surface-2)', border: '1px solid var(--border)',
-          color: isEditing ? 'var(--accent)' : 'var(--text-muted)', borderRadius: '8px',
-          padding: '6px 12px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', minHeight: '34px',
-        }}>
-          {isEditing ? 'Editing' : 'Edit'}
-        </button>
+        </div>
       )}
     </div>
   )
 }
+
+function DetailRow({ k, v }) {
+  if (!v) return null
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '13px' }}>
+      <span style={detailK}>{k}</span>
+      <span style={{ color: 'var(--text)', fontWeight: '500', textAlign: 'right' }}>{v}</span>
+    </div>
+  )
+}
+
+const detailK = { margin: 0, color: 'var(--text-muted)', fontSize: '12px' }
 
 // The app scrolls inside <main class="app-main">, not the window — so scroll
 // that container (falls back to window if the layout ever changes).
@@ -513,71 +567,6 @@ function scrollAppToTop() {
   const main = document.querySelector('.app-main')
   if (main) main.scrollTo({ top: 0, behavior: 'smooth' })
   else window.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-// Most-frequent value in a list (ignoring null/undefined); null if none.
-function mostCommon(values) {
-  const counts = new Map()
-  for (const v of values) {
-    if (v == null) continue
-    counts.set(v, (counts.get(v) ?? 0) + 1)
-  }
-  let best = null, bestN = 0
-  for (const [v, n] of counts) if (n > bestN) { best = v; bestN = n }
-  return best
-}
-
-// Computed summary of our team's existing reports on the team being scouted.
-// Zero API calls — derived from the entries already loaded for the pool.
-function PriorIntel({ entries, teamNumber }) {
-  const num = (teamNumber ?? '').trim().toUpperCase()
-  if (!num) return null
-
-  const mine = entries.filter(e => (e.scouted_team_number ?? e.teamNumber)?.toUpperCase() === num)
-  if (mine.length === 0) return null
-
-  const reliabilities = mine.map(e => e.reliability).filter(r => typeof r === 'number')
-  const avgRel = reliabilities.length
-    ? Math.round((reliabilities.reduce((a, b) => a + b, 0) / reliabilities.length) * 10) / 10
-    : null
-  const threatKey = mostCommon(mine.map(e => e.threat_level))
-  const threat = threatKey ? THREAT_META[threatKey] : null
-  const scoringKey = mostCommon(mine.map(e => e.scoring))
-  const latest = [...mine].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0]
-  const latestVerdict = latest?.how_to_play || latest?.note || null
-
-  const chip = (text, color) => (
-    <span style={{
-      fontSize: '11px', fontWeight: '700', color: color ?? 'var(--text)',
-      border: `1px solid ${color ?? 'var(--border)'}`,
-      background: color ? `color-mix(in oklch, ${color} 14%, transparent)` : 'var(--surface-2)',
-      borderRadius: '999px', padding: '2px 9px',
-    }}>{text}</span>
-  )
-
-  return (
-    <div style={{
-      marginBottom: '24px', padding: '13px 15px', borderRadius: '12px',
-      background: 'var(--surface)', border: '1px solid var(--border)',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px', marginBottom: '10px' }}>
-        <p style={{ ...labelStyle, margin: 0 }}>Prior intel · {num}</p>
-        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-          {mine.length} report{mine.length === 1 ? '' : 's'}
-        </span>
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px', alignItems: 'center' }}>
-        {threat && chip(`${threat.label} threat`, threat.color)}
-        {avgRel != null && chip(`Reliability ${avgRel}/5`)}
-        {scoringKey && chip(SCORING_LABELS[scoringKey])}
-      </div>
-      {latestVerdict && (
-        <p style={{ margin: '10px 0 0', fontSize: '13px', color: 'var(--text)', lineHeight: 1.45 }}>
-          <span style={{ color: 'var(--text-muted)' }}>Latest: </span>"{latestVerdict}"
-        </p>
-      )}
-    </div>
-  )
 }
 
 function CameraIcon() {
