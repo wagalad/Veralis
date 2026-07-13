@@ -8,6 +8,8 @@ const cors = {
 // ── Tunables (all in one place) ───────────────────────────────────────────────
 const RATE_LIMIT = 40           // model calls …
 const RATE_WINDOW = '1 hour'    // … per user per this window
+const GLOBAL_LIMIT = 300        // model calls across ALL users …
+const GLOBAL_WINDOW = '1 hour'  // … per this window (circuit breaker vs. bots)
 const MATCH_COUNT = 6           // KB entries retrieved per question
 const MAX_HISTORY = 6           // prior messages kept for context
 const MAX_QUESTION = 1000       // chars
@@ -175,6 +177,18 @@ Deno.serve(async (req) => {
   if (rlErr) return json({ error: 'Something went wrong. Please try again.' }, 500)
   if (allowed === false) {
     return json({ error: "You've asked a lot of questions recently. Try again a bit later." }, 429)
+  }
+
+  // Global circuit breaker: bounds total model calls across ALL users per window,
+  // so no volume of accounts/bots can run up the bill. Fail-open on RPC error so
+  // this can ship before its migration is applied (the per-user cap above still
+  // holds); it activates automatically once the migration lands.
+  const { data: globalOk, error: gErr } = await admin.rpc('consume_global_assistant_quota', {
+    p_limit: GLOBAL_LIMIT, p_window: GLOBAL_WINDOW,
+  })
+  if (gErr) console.error('global quota rpc error (failing open)', gErr.message)
+  else if (globalOk === false) {
+    return json({ error: 'The rules assistant is busy right now — please try again in a bit.' }, 429)
   }
 
   const context = chunks.map(c => `[${c.rule_no}] ${c.title} (${c.section}): ${c.content}`).join('\n\n')

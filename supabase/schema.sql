@@ -317,3 +317,15 @@ alter table public.assistant_rate_limits enable row level security;
 -- consume_assistant_quota(uuid,int,interval) and match_rules_chunks(vector,int)
 -- are defined in the v20 migration; both are SECURITY DEFINER and granted only
 -- to service_role.
+
+-- ── v21: global rate-limit circuit breaker for the rules assistant ───────────
+-- Full detail in supabase/migration-v21-assistant-global-limit.sql.
+create table if not exists public.assistant_global_rate_limit (
+  id           int         primary key default 1,
+  window_start timestamptz not null default now(),
+  count        int         not null default 0,
+  constraint assistant_global_single_row check (id = 1)
+);
+alter table public.assistant_global_rate_limit enable row level security;
+-- No policies: service-role only. consume_global_assistant_quota(int,interval)
+-- is defined in the v21 migration (SECURITY DEFINER, service_role only).
