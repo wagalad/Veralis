@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTeam } from '../hooks/useTeam'
 import { useScoutingEntries } from '../hooks/useScoutingEntries'
@@ -8,6 +8,17 @@ export default function MyTeam() {
   const { user, loading: authLoading } = useAuth()
   const { team, role, loading: teamLoading, createTeam, joinTeam, leaveTeam, regenerateInvite, getMembers, manageMember } = useTeam()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // Deep link from "View all" (Home) — scroll straight to the scouting log once
+  // the team (and therefore the log) has rendered.
+  useEffect(() => {
+    if (location.hash !== '#scouting-log' || !team) return
+    const raf = requestAnimationFrame(() => {
+      document.getElementById('scouting-log')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [location.hash, team, teamLoading])
 
   if (authLoading || (user && teamLoading)) {
     return <div style={{ padding: '24px 16px', color: 'var(--text-muted)' }}>Loading…</div>
@@ -131,7 +142,7 @@ function ScoutingLog({ team, getMembers, currentUserId, onScout, onEditEntry }) 
   const key = (e) => e.id || e._local_id
 
   return (
-    <div style={{ ...card, marginBottom: '12px' }}>
+    <div id="scouting-log" style={{ ...card, marginBottom: '12px', scrollMarginTop: '16px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '14px' }}>
         <p style={label}>
           Scouting log{entries.length ? ` · ${entries.length}` : ''}

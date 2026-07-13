@@ -6,7 +6,18 @@ import { useScoutingEntries } from '../hooks/useScoutingEntries'
 import { useEvent } from '../hooks/useEvent'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { useMediaQuery } from '../hooks/useMediaQuery'
+import InfoTip from '../components/InfoTip'
 import { getTeamEvents, getTeam, getTeamStats } from '../lib/vexApi'
+
+// A card title with an adjacent "?" tooltip. Keeps the cardHead layout intact.
+function TitleWithTip({ children, tip, label }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+      <span style={cardTitle}>{children}</span>
+      <InfoTip label={label ?? children} text={tip} />
+    </span>
+  )
+}
 
 export default function Home() {
   const { user } = useAuth()
@@ -378,7 +389,10 @@ function QueueHero({ upcoming, hint }) {
   return (
     <div style={card}>
       <div style={{ textAlign: 'center', padding: '22px 18px', background: glow }}>
-        <p style={{ ...cardTitle, margin: 0 }}>Time to Queue</p>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <span style={cardTitle}>Time to Queue</span>
+          <InfoTip label="Time to Queue" text="Live countdown to your next scheduled match. It turns amber ~5 min out and red when it's time to head to the field queue." />
+        </span>
         {next ? (
           <>
             <p style={{ margin: '8px 0 4px', fontSize: overdue ? '44px' : '54px', fontWeight: '800', color: overdue ? '#ef4444' : 'var(--accent)', lineHeight: 1.02, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{display}</p>
@@ -418,7 +432,7 @@ function TeamSnapshot({ reports, teamsScouted, scoutsToday }) {
   ]
   return (
     <div style={card}>
-      <div style={cardHead}><span style={cardTitle}>Team Snapshot</span></div>
+      <div style={cardHead}><TitleWithTip tip="A live count of your team's scouting: total reports, how many distinct teams you've covered, and how many members scouted today.">Team Snapshot</TitleWithTip></div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
         {stats.map(([n, l], i) => (
           <div key={l} style={{ textAlign: 'center', padding: '16px 6px', borderLeft: i === 0 ? 'none' : '1px solid var(--border)' }}>
@@ -441,8 +455,8 @@ function RecentScouting({ entries }) {
   return (
     <div style={card}>
       <div style={cardHead}>
-        <span style={cardTitle}>Recent Scouting</span>
-        <Link to="/my-team" style={cardLink}>View all</Link>
+        <TitleWithTip tip="Your team's three most recent scouting reports. Tap one to open that team's full profile.">Recent Scouting</TitleWithTip>
+        <Link to="/my-team#scouting-log" style={cardLink}>View all</Link>
       </div>
       <div>
         {recent.map((e, i) => <RecentScoutRow key={e.id ?? e._local_id ?? i} entry={e} first={i === 0} />)}
@@ -472,7 +486,7 @@ function OfflineQueue({ pending, online }) {
   return (
     <div style={card}>
       <div style={cardHead}>
-        <span style={cardTitle}>Offline Queue</span>
+        <TitleWithTip tip="Reports you saved without a connection. They sync to your team automatically once you're back online.">Offline Queue</TitleWithTip>
         <span style={{ ...cardTitle, color: 'var(--text-muted)' }}>{pending.length} waiting</span>
       </div>
       {pending.length === 0 ? (
@@ -519,7 +533,7 @@ function QuickLookup({ entries }) {
 
   return (
     <div style={card}>
-      <div style={cardHead}><span style={cardTitle}>Quick Lookup</span></div>
+      <div style={cardHead}><TitleWithTip tip="Jump straight to a team's profile in Search. Your recently scouted teams appear as shortcuts.">Quick Lookup</TitleWithTip></div>
       <form onSubmit={submit} style={{ padding: '13px 15px 6px' }}>
         <input
           value={q}

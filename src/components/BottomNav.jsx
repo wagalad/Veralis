@@ -67,7 +67,7 @@ const navItems = [
   },
 ]
 
-export default function BottomNav() {
+export default function BottomNav({ pinned, onTogglePin }) {
   return (
     <nav className="app-nav">
       {navItems.map(({ to, label, icon }) => (
@@ -85,6 +85,24 @@ export default function BottomNav() {
           <span className="nav-label">{label}</span>
         </NavLink>
       ))}
+
+      {/* Desktop-only: pin the sidebar open, or collapse it back to hover mode */}
+      <button
+        type="button"
+        className="nav-toggle"
+        onClick={onTogglePin}
+        aria-pressed={pinned}
+        aria-label={pinned ? 'Collapse sidebar' : 'Keep sidebar open'}
+      >
+        <svg
+          width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+          style={{ transform: pinned ? 'none' : 'rotate(180deg)', transition: 'transform 200ms' }}
+        >
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+        <span className="nav-label">{pinned ? 'Collapse' : 'Keep open'}</span>
+      </button>
     </nav>
   )
 }

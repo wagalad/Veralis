@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import MfaSetup from '../components/MfaSetup'
+import { OnboardingModal } from '../components/Onboarding'
 import { useAdmin } from '../hooks/useAdmin'
 import { getStoredTheme, setTheme } from '../lib/theme'
 
@@ -11,6 +12,7 @@ export default function Settings() {
   const admin = useAdmin()
   const [theme, setThemeState] = useState(getStoredTheme)
   const [isOperator, setIsOperator] = useState(false)
+  const [showTour, setShowTour] = useState(false)
 
   function chooseTheme(pref) { setTheme(pref); setThemeState(pref) }
 
@@ -61,12 +63,27 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* How to use — replays the first-run tour */}
+      <button
+        className="v-btn"
+        onClick={() => setShowTour(true)}
+        style={{ ...card, width: '100%', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: 'inherit', textAlign: 'left' }}
+      >
+        <span>
+          <span style={{ display: 'block', fontWeight: 600, fontSize: '15px' }}>How to use Veralis</span>
+          <span style={{ display: 'block', fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>Replay the quick tour of every tab</span>
+        </span>
+        <span style={{ color: 'var(--accent)', fontWeight: 700 }}>→</span>
+      </button>
+
       {/* Security — two-factor authentication */}
       {user && (
         <div style={{ ...card, marginBottom: '12px' }}>
           <MfaSetup />
         </div>
       )}
+
+      <OnboardingModal open={showTour} onClose={() => setShowTour(false)} />
 
       {/* Operator — only rendered for platform admins */}
       {isOperator && (
