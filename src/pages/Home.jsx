@@ -9,6 +9,17 @@ import { useMediaQuery } from '../hooks/useMediaQuery'
 import InfoTip from '../components/InfoTip'
 import { getTeamEvents, getTeam, getTeamStats } from '../lib/vexApi'
 
+// Brand wordmark shown at the top-left of the dashboard, so anyone glancing at
+// the screen can tell what app it is.
+function BrandMark() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+      <img src="/logo-mark.png" alt="" style={{ display: 'block', height: '24px', width: 'auto' }} />
+      <span style={{ fontSize: '19px', fontWeight: '800', letterSpacing: '-0.01em' }}>Veralis</span>
+    </div>
+  )
+}
+
 // A card title with an adjacent "?" tooltip. Keeps the cardHead layout intact.
 function TitleWithTip({ children, tip, label }) {
   return (
@@ -187,6 +198,7 @@ function EventHome({ team, entries, onSelect }) {
 
   return (
     <div className="home-dash">
+      <BrandMark />
       <div style={{ marginBottom: '18px' }}>
         <h1 style={{ margin: '0 0 6px', fontSize: '26px', fontWeight: '800' }}>Live Event Mode</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -289,7 +301,8 @@ function MatchSchedule({ event, team, matches, loading, error, entries, onChange
 
   return (
     <div className="home-dash">
-      {/* Header (no top nav, no brand wordmark) */}
+      <BrandMark />
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '18px', gap: '12px' }}>
         <div style={{ minWidth: 0 }}>
           <p style={sectionLabel}>Live event</p>
