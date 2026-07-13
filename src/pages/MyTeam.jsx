@@ -10,14 +10,25 @@ export default function MyTeam() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  // Deep link from "View all" (Home) — scroll straight to the scouting log once
-  // the team (and therefore the log) has rendered.
+  // Deep link from "View all" (Home) — scroll straight to the scouting log.
+  // The member list and entries above it load asynchronously and grow the page,
+  // so a single scroll would land too early. We re-scroll (debounced) whenever
+  // the page content resizes, until it settles a couple of seconds later.
   useEffect(() => {
     if (location.hash !== '#scouting-log' || !team) return
-    const raf = requestAnimationFrame(() => {
+    let settle, ro
+    const scrollToLog = () => {
       document.getElementById('scouting-log')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+    const bump = () => { clearTimeout(settle); settle = setTimeout(scrollToLog, 100) }
+    const raf = requestAnimationFrame(() => {
+      bump() // initial attempt
+      // The page container grows as content above the log loads → re-align.
+      const container = document.getElementById('scouting-log')?.parentElement
+      if (container) { ro = new ResizeObserver(bump); ro.observe(container) }
     })
-    return () => cancelAnimationFrame(raf)
+    const stop = setTimeout(() => ro?.disconnect(), 2500)
+    return () => { cancelAnimationFrame(raf); clearTimeout(settle); clearTimeout(stop); ro?.disconnect() }
   }, [location.hash, team, teamLoading])
 
   if (authLoading || (user && teamLoading)) {
