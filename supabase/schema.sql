@@ -288,3 +288,32 @@ $$;
 
 revoke execute on function public.verified_factor_user_ids() from public, anon, authenticated;
 grant execute on function public.verified_factor_user_ids() to service_role;
+
+-- ── v20: AI rules assistant (RAG knowledge base) ─────────────────────────────
+-- Full detail in supabase/migration-v20-rules-rag.sql.
+create extension if not exists vector;
+
+create table if not exists public.rules_chunks (
+  id          uuid         primary key default gen_random_uuid(),
+  section     text         not null,
+  rule_no     text         not null,
+  title       text         not null,
+  content     text         not null,
+  embedding   vector(1536) not null,
+  token_count int          not null default 0,
+  created_at  timestamptz  not null default now()
+);
+alter table public.rules_chunks enable row level security;
+-- No policies: service-role (Edge Function) only.
+
+create table if not exists public.assistant_rate_limits (
+  user_id      uuid        primary key references auth.users(id) on delete cascade,
+  window_start timestamptz not null default now(),
+  count        int         not null default 0
+);
+alter table public.assistant_rate_limits enable row level security;
+-- No policies: service-role only.
+
+-- consume_assistant_quota(uuid,int,interval) and match_rules_chunks(vector,int)
+-- are defined in the v20 migration; both are SECURITY DEFINER and granted only
+-- to service_role.

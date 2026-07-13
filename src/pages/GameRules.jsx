@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import RulesAssistant from '../components/RulesAssistant'
 
 // ── Game Rules ────────────────────────────────────────────────────────────────
 // A plain-language quick reference for this season's V5RC game. This is our own
@@ -26,9 +27,12 @@ export default function GameRules() {
       <div style={segWrap}>
         <SegBtn active={tab === 'rules'} onClick={() => setTab('rules')}>Rules</SegBtn>
         <SegBtn active={tab === 'calc'} onClick={() => setTab('calc')}>Calculator</SegBtn>
+        <SegBtn active={tab === 'ask'} onClick={() => setTab('ask')}>Ask AI</SegBtn>
       </div>
 
-      {tab === 'calc' ? <ScoreCalculator /> : <RulesView />}
+      {tab === 'calc' ? <ScoreCalculator />
+        : tab === 'ask' ? <RulesAssistant manualUrl={OFFICIAL_MANUAL_URL} />
+          : <RulesView />}
     </div>
   )
 }

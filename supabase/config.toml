@@ -51,3 +51,8 @@ entrypoint = "./functions/summarize-scouting/index.ts"
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/admin-panel/index.ts"
+
+[functions.rules-assistant]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/rules-assistant/index.ts"
