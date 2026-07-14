@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTeam } from '../hooks/useTeam'
+import { useEvent } from '../hooks/useEvent'
 import { useScoutingEntries } from '../hooks/useScoutingEntries'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import OptionGroup from '../components/OptionGroup'
@@ -37,6 +38,7 @@ const emptyForm = {
 export default function Scout() {
   const { user } = useAuth()
   const { team, loading: teamLoading } = useTeam()
+  const { matches } = useEvent(team?.team_number)
   const { entries, loading: entriesLoading, save, update } = useScoutingEntries(team)
   const online = useOnlineStatus()
   const navigate = useNavigate()
@@ -45,8 +47,28 @@ export default function Scout() {
 
   const [form, setForm] = useState(emptyForm)
   const [scoutedTeam, setScoutedTeam] = useState(
-    searchParams.get('team')?.toUpperCase() ?? '16858A'
+    searchParams.get('team')?.toUpperCase() ?? ''
   )
+
+  // Next-opponent suggestions: the earliest unscored, scheduled match's opposing
+  // alliance (the one that doesn't include our own team). Chips only render when
+  // such a match exists, so with no loaded schedule the UI stays uncluttered.
+  const myNumber = team?.team_number?.toUpperCase()
+  const nextMatch = [...matches]
+    .filter(m => !m.scored && m.scheduled)
+    .sort((a, b) => (a.scheduled ?? '').localeCompare(b.scheduled ?? ''))[0]
+  const teamNums = a => (a?.teams ?? [])
+    .filter(t => !t.sitting)
+    .map(t => (t.number ?? t.name ?? '').toUpperCase())
+    .filter(Boolean)
+  const nextOpponents = (() => {
+    if (!nextMatch || !myNumber) return []
+    const alliances = nextMatch.alliances ?? []
+    const mine = alliances.find(a => teamNums(a).includes(myNumber))
+    if (!mine) return []
+    const opp = alliances.find(a => a !== mine)
+    return teamNums(opp).filter(n => n !== myNumber)
+  })()
   const [lastScouted, setLastScouted] = useState(null)
   const [lastWasEdit, setLastWasEdit] = useState(false)
   const [editing, setEditing] = useState(null) // entry being edited, or null
@@ -190,7 +212,7 @@ export default function Scout() {
           id="scout-team"
           value={scoutedTeam}
           onChange={e => setScoutedTeam(e.target.value.toUpperCase())}
-          placeholder="e.g. 16858A"
+          placeholder="Team number to scout"
           maxLength={12}
           autoComplete="off"
           spellCheck={false}
@@ -201,6 +223,34 @@ export default function Scout() {
             letterSpacing: '0.02em', outline: 'none',
           }}
         />
+
+        {/* Next-opponent suggestions — only shown when a next match is loaded */}
+        {!editing && nextOpponents.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              Next{nextMatch.name ? ` · ${nextMatch.name}` : ''}:
+            </span>
+            {nextOpponents.map(num => {
+              const active = scoutedTeam.trim().toUpperCase() === num
+              return (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => setScoutedTeam(num)}
+                  style={{
+                    background: active ? 'rgba(204,0,0,0.14)' : 'var(--surface-2)',
+                    border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                    color: active ? 'var(--accent)' : 'var(--text)',
+                    borderRadius: '999px', padding: '6px 12px', fontSize: '13px', fontWeight: '700',
+                    letterSpacing: '0.02em', cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  {num}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit}>
