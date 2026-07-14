@@ -8,6 +8,7 @@ import Home from './pages/Home'
 import Search from './pages/Search'
 import Scout from './pages/Scout'
 import MyTeam from './pages/MyTeam'
+import TeamJoin from './pages/TeamJoin'
 import GameRules from './pages/GameRules'
 import Settings from './pages/Settings'
 import AdminPanel from './pages/AdminPanel'
@@ -25,7 +26,7 @@ export default function App() {
 }
 
 // Pages shown without the bottom nav (full-height, scrollable on their own).
-const CHROMELESS = ['/login', '/privacy', '/terms']
+const CHROMELESS = ['/login', '/privacy', '/terms', '/team/join']
 
 function Shell() {
   const { pathname } = useLocation()
@@ -67,6 +68,7 @@ function Shell() {
           <Route path="/search" element={<Search />} />
           <Route path="/scout" element={<Scout />} />
           <Route path="/my-team" element={<MyTeam />} />
+          <Route path="/team/join" element={<TeamJoin />} />
           <Route path="/rules" element={<GameRules />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admin" element={<AdminPanel />} />

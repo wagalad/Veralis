@@ -3,6 +3,10 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTeam } from '../hooks/useTeam'
 import { useScoutingEntries } from '../hooks/useScoutingEntries'
+import { PENDING_JOIN_KEY } from './TeamJoin'
+
+// Canonical public origin used to build shareable invite links.
+const APP_URL = 'https://veralis.app'
 
 export default function MyTeam() {
   const { user, loading: authLoading } = useAuth()
@@ -350,6 +354,7 @@ const detailK = { margin: 0, color: 'var(--text-muted)', fontSize: '12px' }
 
 function TeamCard({ team, role, currentUserId, leaveTeam, regenerateInvite, getMembers, manageMember }) {
   const [copied, setCopied] = useState(false)
+  const [shared, setShared] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
   const [inviteCode, setInviteCode] = useState(team.invite_code)
   const [leaving, setLeaving] = useState(false)
@@ -360,6 +365,25 @@ function TeamCard({ team, role, currentUserId, leaveTeam, regenerateInvite, getM
     await navigator.clipboard.writeText(inviteCode)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  // One-tap share: native share sheet on mobile, clipboard fallback elsewhere.
+  // The link carries the secret invite code; the message names the team number.
+  async function shareInvite() {
+    const link = `${APP_URL}/team/join?code=${inviteCode}`
+    const message = `You've been invited to join VEX team ${team.team_number} on Veralis. Tap to join: ${link}`
+    const copyMessage = async () => {
+      await navigator.clipboard.writeText(message)
+      setShared(true)
+      setTimeout(() => setShared(false), 2000)
+    }
+    try {
+      if (navigator.share) await navigator.share({ text: message })
+      else await copyMessage()
+    } catch (err) {
+      if (err?.name === 'AbortError') return // user dismissed the share sheet
+      try { await copyMessage() } catch { /* ignore */ }
+    }
   }
 
   async function handleLeave() {
@@ -430,8 +454,20 @@ function TeamCard({ team, role, currentUserId, leaveTeam, regenerateInvite, getM
         </button>
       </div>
 
-      <p style={{ margin: '8px 0 0', fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-        Share this code with teammates. They enter it in the "Join a team" screen.
+      <button
+        onClick={shareInvite}
+        className="v-btn v-btn-accent"
+        style={{ ...btnPrimary, width: '100%', height: '46px', fontSize: '14px', marginTop: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+        </svg>
+        {shared ? 'Invite copied!' : 'Share invite'}
+      </button>
+
+      <p style={{ margin: '10px 0 0', fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+        Share the link — teammates tap it to join instantly. Or give them the code to enter on the "Join a team" screen.
       </p>
 
       {/* Regenerate — admin only */}
@@ -678,6 +714,28 @@ function TeamSetup({ createTeam, joinTeam }) {
   const [teamName, setTeamName] = useState('')
   const [error, setError] = useState(null) // { message, duplicate?, teamNumber? }
   const [loading, setLoading] = useState(false)
+
+  // Finish a pending invite-link join: the invitee tapped a /team/join link while
+  // signed out, authenticated, and landed here. Complete the join automatically.
+  useEffect(() => {
+    let pending = null
+    try { pending = localStorage.getItem(PENDING_JOIN_KEY) } catch { /* ignore */ }
+    if (!pending) return
+    try { localStorage.removeItem(PENDING_JOIN_KEY) } catch { /* ignore */ }
+    setMode('join')
+    setInviteCode(pending)
+    ;(async () => {
+      setLoading(true)
+      try {
+        await joinTeam(pending)
+      } catch (err) {
+        setError({ message: err.message, duplicate: err.duplicate ?? false, teamNumber: err.teamNumber ?? null })
+      } finally {
+        setLoading(false)
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function switchToJoin() {
     setMode('join')
