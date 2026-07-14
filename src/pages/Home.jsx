@@ -293,7 +293,7 @@ function MatchSchedule({ event, team, matches, loading, error, entries, onChange
     </div>
   )
 
-  const queueBlock = <QueueHero upcoming={upcoming} />
+  const queueBlock = <QueueHero upcoming={upcoming} event={event} />
   const snapshotBlock = <TeamSnapshot reports={reports} teamsScouted={teamsScouted} scoutsToday={scoutsToday} />
   const recentBlock = <RecentScouting entries={entries} />
   const offlineBlock = <OfflineQueue pending={pending} online={online} />
@@ -362,12 +362,40 @@ function StatusPill({ online, pending }) {
 
 // ── Time to Queue (live countdown to the next scheduled match) ─────────────────
 
-function QueueHero({ upcoming, hint }) {
+function QueueHero({ upcoming, event, hint }) {
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(id)
   }, [])
+
+  // Once the event's end date has passed there's nothing left to queue for, so a
+  // stale unscored match must not keep the countdown stuck on "Now · Xm late".
+  // Treat the event as over from the end of its end day (day granularity).
+  const endRaw = event?.end || event?.start
+  let eventEnded = false
+  if (endRaw) {
+    const endDay = new Date(endRaw)
+    if (!isNaN(endDay)) {
+      endDay.setHours(23, 59, 59, 999)
+      eventEnded = now > endDay.getTime()
+    }
+  }
+
+  if (eventEnded) {
+    return (
+      <div style={card}>
+        <div style={{ textAlign: 'center', padding: '22px 18px' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <span style={cardTitle}>Time to Queue</span>
+            <InfoTip label="Time to Queue" text="Live countdown to your next scheduled match. It turns amber ~5 min out and red when it's time to head to the field queue." />
+          </span>
+          <p style={{ margin: '10px 0 4px', fontSize: '20px', fontWeight: '800', color: 'var(--text)' }}>Event Completed</p>
+          <p style={{ margin: '2px auto 0', color: 'var(--text-muted)', fontSize: '13px', maxWidth: '30ch' }}>This event has wrapped up — no more matches to queue for.</p>
+        </div>
+      </div>
+    )
+  }
 
   // `upcoming` is unscored matches sorted by scheduled time ascending. Anchor to
   // the EARLIEST unscored match that has a time — not the first one still in the
