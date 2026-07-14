@@ -1,6 +1,6 @@
 # Veralis — Terms of Use
 
-**Last updated:** July 2, 2026
+**Last updated:** July 13, 2026
 
 These Terms of Use ("Terms") are a legal agreement between you and
 **Raghav K** ("Veralis", "we", "us") governing your use of the Veralis web app
@@ -34,21 +34,31 @@ You agree not to:
 
 You keep ownership of the scouting entries, notes, and photos you submit ("Your
 Content"). You grant us a limited license to store, display, and process Your
-Content solely to operate the Service for you and your team. You are responsible
-for Your Content and confirm you have the right to submit it.
+Content solely to operate the Service for you and your team. This includes
+processing by our third-party AI providers to generate features you request,
+such as AI scouting summaries and rules-assistant answers (see our Privacy
+Policy). You are responsible for Your Content and confirm you have the right to
+submit it.
 
 ## 5. Data and privacy
 
 Your use of the Service is also governed by our Privacy Policy, which explains
 how we handle your information.
 
-## 6. Third-party data and services
+## 6. Third-party data, services, and AI features
 
 The Service displays VEX competition data retrieved from the VEX / REC Foundation
 API. That data is provided by third parties, and we do not guarantee its
 accuracy, completeness, or availability. Veralis is not affiliated with,
 endorsed by, or sponsored by VEX Robotics, Innovation First, or the REC
 Foundation.
+
+Veralis includes AI-assisted features (the rules assistant and scouting
+summaries) powered by third-party AI providers. AI-generated content may be
+inaccurate or incomplete and is provided for convenience only. It is **not
+official** and is not a substitute for the official VEX Game Manual, the VEX Q&A
+system, or a Head Referee's ruling. Do not rely on it for competition decisions —
+always verify anything important against the authoritative source.
 
 ## 7. Service availability
 

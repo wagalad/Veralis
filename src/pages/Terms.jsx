@@ -3,7 +3,7 @@ import LegalPage, { H, P, UL, LI, Mail } from './LegalPage'
 
 export default function Terms() {
   return (
-    <LegalPage title="Terms of Use" updated="July 2, 2026">
+    <LegalPage title="Terms of Use" updated="July 13, 2026">
       <P>
         These Terms of Use ("Terms") are a legal agreement between you and <strong>Raghav K</strong>{' '}
         ("Veralis", "we", "us") governing your use of the Veralis web app (the "Service"). By
@@ -28,13 +28,14 @@ export default function Terms() {
       </UL>
 
       <H>4. Your content</H>
-      <P>You keep ownership of the scouting entries, notes, and photos you submit ("Your Content"). You grant us a limited license to store, display, and process Your Content solely to operate the Service for you and your team. You are responsible for Your Content and confirm you have the right to submit it.</P>
+      <P>You keep ownership of the scouting entries, notes, and photos you submit ("Your Content"). You grant us a limited license to store, display, and process Your Content solely to operate the Service for you and your team. This includes processing by our third-party AI providers to generate features you request, such as AI scouting summaries and rules-assistant answers (see our <Link to="/privacy" style={{ color: 'var(--accent)' }}>Privacy Policy</Link>). You are responsible for Your Content and confirm you have the right to submit it.</P>
 
       <H>5. Data and privacy</H>
       <P>Your use of the Service is also governed by our <Link to="/privacy" style={{ color: 'var(--accent)' }}>Privacy Policy</Link>, which explains how we handle your information.</P>
 
-      <H>6. Third-party data and services</H>
+      <H>6. Third-party data, services, and AI features</H>
       <P>The Service displays VEX competition data retrieved from the VEX / REC Foundation API. That data is provided by third parties, and we do not guarantee its accuracy, completeness, or availability. Veralis is not affiliated with, endorsed by, or sponsored by VEX Robotics, Innovation First, or the REC Foundation.</P>
+      <P>Veralis includes AI-assisted features (the rules assistant and scouting summaries) powered by third-party AI providers. AI-generated content may be inaccurate or incomplete and is provided for convenience only. It is <strong>not official</strong> and is not a substitute for the official VEX Game Manual, the VEX Q&amp;A system, or a Head Referee's ruling. Do not rely on it for competition decisions — always verify anything important against the authoritative source.</P>
 
       <H>7. Service availability</H>
       <P>The Service is provided on an "as is" and "as available" basis. We may change, suspend, or discontinue any part of it at any time, and we do not guarantee it will be uninterrupted or error-free.</P>
