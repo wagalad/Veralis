@@ -5,6 +5,7 @@
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/web-app-manifest-512x512.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -53,7 +54,53 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!--
+        Static, crawlable SEO content shown before the JavaScript app loads.
+        Search engines and social scrapers read this instantly; React replaces
+        it with the interactive app on mount (createRoot clears #root children).
+        The script below removes it for signed-in visitors to avoid a flash.
+      -->
+      <div id="seo-shell" style="max-width: 760px; margin: 0 auto; padding: 64px 20px; min-height: 100vh; box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: var(--text, #f2f2f2); background: var(--bg, #0d0d0d);">
+        <img src="/logo-mark.png" alt="Veralis logo" width="150" height="113" style="height: auto; margin-bottom: 24px;" />
+        <h1 style="font-size: 40px; line-height: 1.1; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 16px;">Veralis — the free VEX Robotics scouting app</h1>
+        <p style="font-size: 18px; line-height: 1.6; color: var(--text-muted, #a1a1a1); margin: 0 0 28px;">
+          Veralis is a free, offline-first VEX scouting app for VRC teams. Track every match live,
+          log structured scouting reports on the teams you watch, look up any team's record, skills
+          scores, OpenSkill rating and awards, and get a live match-queue countdown at competitions —
+          all from your phone in the pits.
+        </p>
+        <h2 style="font-size: 22px; font-weight: 700; margin: 0 0 12px;">Why VEX teams scout with Veralis</h2>
+        <ul style="font-size: 17px; line-height: 1.7; color: var(--text-muted, #a1a1a1); padding-left: 20px; margin: 0 0 28px;">
+          <li>Shared team scouting — every scout's reports sync into one pool in real time</li>
+          <li>Structured robot reports: threat level, scoring, defense, driver skill, autonomous and more</li>
+          <li>Look up any VEX team's match record, skills scores, OpenSkill rating and awards</li>
+          <li>Live match schedule with a countdown telling you exactly when to queue</li>
+          <li>Works offline in loud venues with bad signal — entries sync when you reconnect</li>
+          <li>100% free for VEX Robotics Competition (VRC) teams</li>
+        </ul>
+        <p style="margin: 0 0 28px;">
+          <a href="/login?mode=signup" style="display: inline-block; color: #fff; background: var(--accent, #cc0000); text-decoration: none; padding: 14px 24px; border-radius: 10px; font-weight: 700; font-size: 16px;">Start scouting free</a>
+        </p>
+        <p style="font-size: 14px; color: var(--text-muted, #a1a1a1); margin: 0;">
+          A VEX scouting app for VRC / VEX Robotics Competition teams. Loading the app…
+        </p>
+      </div>
+    </div>
+    <script>
+      // Signed-in visitors don't need the marketing shell — drop it before paint
+      // so they never see it flash before the app mounts. (Detects a Supabase session.)
+      try {
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') > 0) {
+            var el = document.getElementById('seo-shell');
+            if (el) el.remove();
+            break;
+          }
+        }
+      } catch (e) {}
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

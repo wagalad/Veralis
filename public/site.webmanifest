@@ -1,6 +1,7 @@
 {
-  "name": "MyWebSite",
-  "short_name": "MySite",
+  "name": "Veralis — VEX Robotics Scouting App",
+  "short_name": "Veralis",
+  "description": "Free, offline-first VEX Robotics scouting app for VRC teams. Share reports, look up any team's stats and OpenSkill rating, and get a live match-queue countdown.",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",
@@ -15,7 +16,7 @@
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
+  "theme_color": "#0d0d0d",
+  "background_color": "#0d0d0d",
   "display": "standalone"
 }
