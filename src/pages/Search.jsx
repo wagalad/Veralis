@@ -96,6 +96,15 @@ export default function Search() {
     runSearch(query, program)
   }
 
+  // Switching program after a search has run re-executes it under the new
+  // program, so results update to that program's team without re-tapping Search.
+  // (setProgram is async, so pass the new value straight into runSearch.)
+  function handleProgramChange(p) {
+    if (p === program) return
+    setProgram(p)
+    if (results !== null && query.trim()) runSearch(query, p)
+  }
+
   // Fetch a team's VEX stats, our scouting, and this/last season ratings, and
   // store them under expandedData[id]. Deduped via requestedRef so prefetch +
   // click never double-fetch. Used by both the eager prefetch and toggleExpand.
@@ -184,7 +193,7 @@ export default function Search() {
             <button
               key={p}
               type="button"
-              className="v-btn" onClick={() => setProgram(p)}
+              className="v-btn" onClick={() => handleProgramChange(p)}
               style={{
                 height: '34px', padding: '0 14px', borderRadius: '8px',
                 fontSize: '12px', fontWeight: '600', cursor: 'pointer',
