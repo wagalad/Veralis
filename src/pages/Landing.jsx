@@ -104,7 +104,7 @@ function Hero() {
         <div className="lz-hero-grid">
           <div>
             <Reveal>
-              <Eyebrow color={EYEBROW}>Scouting for VEX teams</Eyebrow>
+              <Eyebrow color={EYEBROW}>The free VEX scouting app</Eyebrow>
             </Reveal>
             <Reveal delay={60}>
               <h1 style={{ margin: '18px 0 0', fontSize: 'clamp(34px, 6.4vw, 68px)', lineHeight: 1.03, fontWeight: 850, letterSpacing: '-0.03em', textWrap: 'balance' }}>
@@ -113,9 +113,10 @@ function Hero() {
             </Reveal>
             <Reveal delay={120}>
               <p style={{ margin: '22px 0 0', fontSize: 'clamp(16px, 1.9vw, 19px)', lineHeight: 1.55, color: 'var(--text-muted)', maxWidth: '48ch' }}>
-                Veralis turns your whole team into one scouting operation. Track every
-                match live, log structured reports on the teams you watch, and rank
-                them with a real skill rating, all from your phone in the pits.
+                Veralis is the VEX scouting app that turns your whole team into one
+                scouting operation. Track every match live, log structured reports on
+                the teams you watch, and rank them with a real skill rating, all from
+                your phone in the pits.
               </p>
             </Reveal>
             <Reveal delay={180}>
