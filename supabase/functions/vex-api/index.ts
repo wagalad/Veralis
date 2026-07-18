@@ -219,13 +219,15 @@ Deno.serve(async (req) => {
       if (cached) return json({ teams: cached })
 
       const byNumber = type === 'number' || (type !== 'name' && /^\d/.test(q))
-      // Team numbers are unique across programs, so no program filter needed.
-      // Name search omits program filter too until we know the API's accepted values.
       const param = byNumber
         ? `number=${encodeURIComponent(q.toUpperCase())}`
         : `name=${encodeURIComponent(q)}`
 
-      const result = await vexGet(`/teams?${param}`, token)
+      // Filter to the selected program (VRC/VEXU/IQ). Without this, a partial
+      // number like "10B" returns matching teams from every program at once,
+      // so the program toggle appears to do nothing.
+      const pid = PROGRAM_IDS[program] ?? PROGRAM_IDS.VRC
+      const result = await vexGet(`/teams?${param}&program%5B%5D=${pid}`, token)
       const teams = Array.isArray(result.data) ? result.data.slice(0, 20) : []
 
       cacheSet(cacheKey, teams, 120) // 2 min — search results
