@@ -55,37 +55,50 @@ const STEPS = [
 
 const SPOT_PAD = 8
 const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)'
+const VP_MARGIN = 12 // keep the callout this far from every viewport edge
+const CALLOUT_GAP = 16 // gap between the spotlight and the callout
+// Rough card height, used only to keep the desktop callout from clipping the
+// bottom edge; the real card auto-sizes to its content.
+const EST_HEIGHT = 300
 
 // Given the spotlight rect (viewport coords) or null, decide where the callout
-// sits and which edge its arrow points from.
+// sits and which edge its arrow points from. Layout is keyed off the same
+// `min-width: 768px` breakpoint the CSS uses to swap the nav between a mobile
+// bottom bar and a desktop left sidebar — NOT off the tab's own geometry, since
+// a left-hand bottom-bar tab looks just like a sidebar tab (narrow, near x=0).
 function placeCallout(spot) {
   const vw = window.innerWidth, vh = window.innerHeight
-  const W = Math.min(320, vw - 24)
-  if (!spot) {
-    return { arrow: null, width: W, style: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' } }
+  const W = Math.min(320, vw - VP_MARGIN * 2)
+  const centered = {
+    arrow: null, width: W,
+    style: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
   }
+  if (!spot) return centered
+
   const cx = spot.left + spot.width / 2
-  // Desktop sidebar tab (narrow, hugging the left edge) → callout to the right.
-  if (spot.left < 160 && spot.width < 220) {
-    const top = Math.min(Math.max(spot.top, 12), vh - 240)
-    return {
-      arrow: { side: 'left', offset: Math.max(16, spot.top + spot.height / 2 - top) },
-      width: W, style: { top, left: spot.left + spot.width + 16 },
+  const clampLeft = (l) => Math.min(Math.max(l, VP_MARGIN), vw - W - VP_MARGIN)
+
+  // Desktop: nav is a left sidebar → callout to the right of the tab. If it
+  // wouldn't fit (very narrow / expanded rail), fall back to a centered card so
+  // it can never run off the right edge — the spotlight still marks the tab.
+  if (vw >= 768) {
+    const left = spot.left + spot.width + CALLOUT_GAP
+    if (left + W <= vw - VP_MARGIN) {
+      const top = Math.min(Math.max(spot.top, VP_MARGIN), Math.max(VP_MARGIN, vh - EST_HEIGHT - VP_MARGIN))
+      return {
+        arrow: { side: 'left', offset: Math.max(16, spot.top + spot.height / 2 - top) },
+        width: W, style: { top, left },
+      }
     }
+    return centered
   }
-  // Bottom bar (mobile) → callout above the tab.
-  if (spot.top > vh * 0.6) {
-    const left = Math.min(Math.max(cx - W / 2, 12), vw - W - 12)
-    return {
-      arrow: { side: 'bottom', offset: Math.max(16, Math.min(W - 16, cx - left)) },
-      width: W, style: { bottom: vh - spot.top + 16, left },
-    }
-  }
-  // Otherwise → callout below the target.
-  const left = Math.min(Math.max(cx - W / 2, 12), vw - W - 12)
+
+  // Mobile: nav is a bottom bar → callout above the tab, clamped horizontally so
+  // it stays fully on screen for every tab (including the left-hand ones).
+  const left = clampLeft(cx - W / 2)
   return {
-    arrow: { side: 'top', offset: Math.max(16, Math.min(W - 16, cx - left)) },
-    width: W, style: { top: spot.top + spot.height + 16, left },
+    arrow: { side: 'bottom', offset: Math.max(16, Math.min(W - 16, cx - left)) },
+    width: W, style: { bottom: vh - spot.top + CALLOUT_GAP, left },
   }
 }
 
