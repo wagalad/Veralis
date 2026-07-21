@@ -30,12 +30,16 @@ export function initAnalytics() {
     disable_session_recording: true,
     capture_pageleave: true,      // cheap, and needed for accurate session/bounce metrics
     person_profiles: 'identified_only', // don't create profiles for anon visitors we never identify
-    // Strip query strings from every event's URL properties. The /team/join?code=…
+    // Strip query strings from every URL-bearing property. The /team/join?code=…
     // invite link carries a secret team-access code; without this, auto-enriched
-    // events ($pageleave, custom events fired on that page) would ship it to PostHog.
+    // events ($pageleave, custom events fired on that page) — and the persisted
+    // $initial_current_url / $initial_referrer person props set on $identify —
+    // would ship it to PostHog. Match by key *suffix* so both the plain and the
+    // $initial_* variants are covered.
     sanitize_properties: (props) => {
-      for (const k of ['$current_url', '$referrer', '$referring_domain']) {
-        if (typeof props[k] === 'string' && props[k].includes('?')) {
+      for (const k in props) {
+        if ((k.endsWith('current_url') || k.endsWith('referrer')) &&
+            typeof props[k] === 'string' && props[k].includes('?')) {
           props[k] = props[k].split('?')[0]
         }
       }
