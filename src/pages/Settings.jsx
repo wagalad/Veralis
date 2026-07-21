@@ -5,6 +5,7 @@ import MfaSetup from '../components/MfaSetup'
 import { OnboardingModal } from '../components/Onboarding'
 import { useAdmin } from '../hooks/useAdmin'
 import { getStoredTheme, setTheme } from '../lib/theme'
+import { hasOptedOut, optIn, optOut } from '../lib/analytics'
 
 export default function Settings() {
   const { user, signOut } = useAuth()
@@ -13,8 +14,14 @@ export default function Settings() {
   const [theme, setThemeState] = useState(getStoredTheme)
   const [isOperator, setIsOperator] = useState(false)
   const [showTour, setShowTour] = useState(false)
+  const [analyticsOff, setAnalyticsOff] = useState(hasOptedOut)
 
   function chooseTheme(pref) { setTheme(pref); setThemeState(pref) }
+
+  function toggleAnalytics() {
+    if (analyticsOff) { optIn(); setAnalyticsOff(false) }
+    else { optOut(); setAnalyticsOff(true) }
+  }
 
   // Probe operator access; the link only appears if the server says yes (i.e.
   // the user is in platform_admins and their session is AAL2). Non-operators
@@ -75,6 +82,35 @@ export default function Settings() {
         </span>
         <span style={{ color: 'var(--accent)', fontWeight: 700 }}>→</span>
       </button>
+
+      {/* Privacy — analytics opt-out */}
+      <div style={{ ...card, marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+        <span>
+          <span style={{ display: 'block', fontWeight: 600, fontSize: '15px' }}>Product analytics</span>
+          <span style={{ display: 'block', fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
+            Privacy-friendly usage data that helps improve Veralis. No ads, never sold.
+          </span>
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={!analyticsOff}
+          aria-label="Product analytics"
+          onClick={toggleAnalytics}
+          style={{
+            flex: '0 0 auto', width: '46px', height: '28px', borderRadius: '14px', border: 'none',
+            cursor: 'pointer', padding: 0, position: 'relative',
+            background: analyticsOff ? 'var(--surface-2)' : 'var(--accent)',
+            transition: 'background 0.15s',
+          }}
+        >
+          <span style={{
+            position: 'absolute', top: '3px', left: analyticsOff ? '3px' : '21px',
+            width: '22px', height: '22px', borderRadius: '50%', background: '#fff',
+            transition: 'left 0.15s',
+          }} />
+        </button>
+      </div>
 
       {/* Security — two-factor authentication */}
       {user && (

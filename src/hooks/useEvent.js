@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getTeam, getTeamMatches } from '../lib/vexApi'
+import { trackEventModeSelected } from '../lib/analytics'
 
 const LS_KEY = 'veralis_active_event'
 
@@ -41,6 +42,7 @@ export function useEvent(teamNumber) {
     setActiveEvent(saved)
     setMatches([])
     setMatchesError(null)
+    trackEventModeSelected()
   }
 
   function clearEvent() {

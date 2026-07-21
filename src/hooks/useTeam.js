@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { setTeamGroup, trackTeamCreated, trackTeamJoined } from '../lib/analytics'
 
 export function useTeam() {
   const { user } = useAuth()
@@ -14,7 +15,12 @@ export function useTeam() {
       .select('role, teams(*)')
       .eq('user_id', user.id)
       .maybeSingle()
-      .then(({ data }) => setMembership(data ? { team: data.teams, role: data.role } : null))
+      .then(({ data }) => {
+        const m = data ? { team: data.teams, role: data.role } : null
+        setMembership(m)
+        // Associate this person with their team for group analytics (deduped in the wrapper).
+        if (m) setTeamGroup(m.team, m.role)
+      })
   }, [user?.id])
 
   // Create a new team — goes through Edge Function, never touches DB directly.
@@ -33,6 +39,8 @@ export function useTeam() {
       throw err
     }
     setMembership({ team: data.team, role: 'admin' })
+    setTeamGroup(data.team, 'admin')
+    trackTeamCreated(data.team.team_number)
     return data.team
   }
 
@@ -52,6 +60,8 @@ export function useTeam() {
     }
     if (data?.error) throw new Error(data.error)
     setMembership({ team: data.team, role: 'member' })
+    setTeamGroup(data.team, 'member')
+    trackTeamJoined('invite_code')
     return data.team
   }
 

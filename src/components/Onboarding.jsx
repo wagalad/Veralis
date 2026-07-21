@@ -1,5 +1,6 @@
 import { useState, useEffect, useLayoutEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { trackOnboarding } from '../lib/analytics'
 
 // An interactive coach-mark tour: an animated spotlight moves across the real
 // nav tabs while a callout with an arrow explains each one. Anchoring to the
@@ -147,7 +148,7 @@ export function OnboardingModal({ open, onClose }) {
   // Esc to close + lock background scroll while open.
   useEffect(() => {
     if (!open) return
-    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    const onKey = (e) => { if (e.key === 'Escape') onClose('skipped') }
     document.addEventListener('keydown', onKey)
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -156,7 +157,7 @@ export function OnboardingModal({ open, onClose }) {
 
   if (!open) return null
 
-  const next = () => (isLast ? onClose() : setI(n => n + 1))
+  const next = () => (isLast ? onClose('completed') : setI(n => n + 1))
   const back = () => setI(n => Math.max(0, n - 1))
   const co = placeCallout(spot)
 
@@ -219,7 +220,7 @@ export function OnboardingModal({ open, onClose }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => onClose(isLast ? 'completed' : 'skipped')}
             style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '13px', fontWeight: '600', cursor: 'pointer', padding: '4px 2px' }}
           >
             {isLast ? 'Close' : 'Skip'}
@@ -264,12 +265,16 @@ export function FirstRunTour() {
   useEffect(() => {
     if (!storageKey) return
     try {
-      if (!localStorage.getItem(storageKey)) setOpen(true)
+      if (!localStorage.getItem(storageKey)) {
+        setOpen(true)
+        trackOnboarding('started')
+      }
     } catch { /* private mode / storage blocked — just skip the tour */ }
   }, [storageKey])
 
-  function close() {
+  function close(reason) {
     setOpen(false)
+    trackOnboarding(reason === 'completed' ? 'completed' : 'skipped')
     try { if (storageKey) localStorage.setItem(storageKey, '1') } catch { /* ignore */ }
   }
 

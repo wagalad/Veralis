@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { listFactors, startEnroll, verifyCode, disableMfa, generateRecoveryCodes } from '../hooks/useMfa'
+import { trackMfaEnabled } from '../lib/analytics'
 
 // Account-settings widget (rendered in My Team) to turn 2FA on or off and
 // manage recovery codes.
@@ -32,6 +33,7 @@ export default function MfaSetup() {
     setError(null); setBusy(true)
     try {
       await verifyCode(enroll.factorId, code.trim())
+      trackMfaEnabled()
       setEnroll(null)
       setCode('')
       // Session is now AAL2 — immediately mint recovery codes to show once.

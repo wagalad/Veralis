@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { capturePageview } from './lib/analytics'
 import BottomNav from './components/BottomNav'
 import MfaChallenge from './components/MfaChallenge'
 import { FirstRunTour } from './components/Onboarding'
@@ -31,6 +32,13 @@ const CHROMELESS = ['/login', '/privacy', '/terms', '/team/join']
 function Shell() {
   const { pathname } = useLocation()
   const { user, mfaRequired } = useAuth()
+
+  // SPA pageview: PostHog's automatic capture only fires on hard loads, so we
+  // send a $pageview on every client-side route change. Routes are all static
+  // (no :params), so pathnames carry no PII.
+  useEffect(() => {
+    capturePageview(pathname)
+  }, [pathname])
   // The public landing page ("/" when logged out) renders without the app nav.
   const onLanding = pathname === '/' && !user
   const chromeless = CHROMELESS.includes(pathname) || onLanding

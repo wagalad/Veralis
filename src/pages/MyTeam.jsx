@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTeam } from '../hooks/useTeam'
 import { useScoutingEntries } from '../hooks/useScoutingEntries'
 import { PENDING_JOIN_KEY } from './TeamJoin'
+import { trackInviteShared } from '../lib/analytics'
 
 // Canonical public origin used to build shareable invite links.
 const APP_URL = 'https://veralis.app'
@@ -363,6 +364,7 @@ function TeamCard({ team, role, currentUserId, leaveTeam, regenerateInvite, getM
 
   async function copyCode() {
     await navigator.clipboard.writeText(inviteCode)
+    trackInviteShared('copy_code')
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -374,12 +376,15 @@ function TeamCard({ team, role, currentUserId, leaveTeam, regenerateInvite, getM
     const message = `You've been invited to join VEX team ${team.team_number} on Veralis. Tap to join: ${link}`
     const copyMessage = async () => {
       await navigator.clipboard.writeText(message)
+      trackInviteShared('copy_code')
       setShared(true)
       setTimeout(() => setShared(false), 2000)
     }
     try {
-      if (navigator.share) await navigator.share({ text: message })
-      else await copyMessage()
+      if (navigator.share) {
+        await navigator.share({ text: message })
+        trackInviteShared('native_share')
+      } else await copyMessage()
     } catch (err) {
       if (err?.name === 'AbortError') return // user dismissed the share sheet
       try { await copyMessage() } catch { /* ignore */ }

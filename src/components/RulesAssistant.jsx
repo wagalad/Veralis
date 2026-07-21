@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { supabase } from '../lib/supabase'
+import { trackRulesAsked } from '../lib/analytics'
 
 const SUGGESTIONS = [
   'How do I earn the Autonomous Win Point?',
@@ -36,6 +37,7 @@ export default function RulesAssistant({ manualUrl }) {
     const history = messages.map(m => ({ role: m.role, content: m.content }))
     setMessages(m => [...m, { role: 'user', content: q }])
     setLoading(true)
+    trackRulesAsked()
 
     try {
       const { data, error: fnErr } = await supabase.functions.invoke('rules-assistant', {

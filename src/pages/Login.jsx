@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { supabase } from '../lib/supabase'
+import { trackSignup, trackLogin } from '../lib/analytics'
 
 // Public hCaptcha site key (safe to ship). The real key is domain-locked to
 // veralis.app in production; hCaptcha's universal test key is used in dev.
@@ -44,10 +45,12 @@ export default function Login() {
       if (mode === 'signup') {
         const { error } = await supabase.auth.signUp({ email, password, options })
         if (error) throw error
+        trackSignup('email')
         setSuccess('Check your email to confirm your account, then sign in.')
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password, options })
         if (error) throw error
+        trackLogin('email')
         navigate('/my-team')
       }
     } catch (err) {

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useOnlineStatus } from './useOnlineStatus'
+import { trackScoutEntry } from '../lib/analytics'
 
 const pendingKey = (teamId) => `vrc_pending_${teamId}`
 
@@ -94,6 +95,11 @@ export function useScoutingEntries(team) {
     savePending(team.id, [localEntry, ...existing])
     setPendingState(prev => [localEntry, ...prev])
 
+    // Count the scouting action once, at submit time (online or offline). The
+    // offline queue flush (syncPending) re-inserts the same rows and must not
+    // re-count, so we track here rather than on the DB insert.
+    trackScoutEntry('created')
+
     if (!online) return localEntry
 
     // Online: upload photo then insert to Supabase.
@@ -130,6 +136,7 @@ export function useScoutingEntries(team) {
   // Edit an existing entry. RLS lets any team member edit their team's entries
   // (created_by is held immutable by a trigger); cross-team edits are blocked.
   async function update(entry, scoutedTeamNumber, form, photoFile) {
+    trackScoutEntry('updated')
     const fields = {
       scouted_team_number: scoutedTeamNumber,
       threat_level: form.threat_level,

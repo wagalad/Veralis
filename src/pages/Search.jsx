@@ -6,6 +6,7 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { supabase } from '../lib/supabase'
 import { searchTeams, getTeamStats, getTeamSeasonMatches } from '../lib/vexApi'
 import { computeTeamRating } from '../lib/rating'
+import { trackSearch } from '../lib/analytics'
 
 const DRIVETRAIN_LABELS = { tank: 'Tank', mecanum: 'Mecanum', xdrive: 'X-drive', other: 'Other/unsure' }
 const INTAKE_LABELS    = { strong: 'Strong', okay: 'Okay', weak: 'Weak', none: 'None/unsure' }
@@ -81,6 +82,7 @@ export default function Search() {
     try {
       const teams = await searchTeams(q, prog)
       setResults(teams)
+      trackSearch()
       // Warm up EVERY result so expanding any card is instant — fed through a
       // small concurrency pool so a large result set doesn't burst the API.
       prefetchAll(teams ?? [], prog)
