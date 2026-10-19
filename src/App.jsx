@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import BottomNav from './components/BottomNav'
+import LoadingScreen from './components/LoadingScreen'
 import MfaChallenge from './components/MfaChallenge'
 import { FirstRunTour } from './components/Onboarding'
 import Home from './pages/Home'
@@ -30,7 +31,7 @@ const CHROMELESS = ['/login', '/privacy', '/terms', '/team/join']
 
 function Shell() {
   const { pathname } = useLocation()
-  const { user, mfaRequired } = useAuth()
+  const { user, mfaRequired, loading } = useAuth()
   // The public landing page ("/" when logged out) renders without the app nav.
   const onLanding = pathname === '/' && !user
   const chromeless = CHROMELESS.includes(pathname) || onLanding
@@ -46,6 +47,11 @@ function Shell() {
       return next
     })
   }
+
+  // While the session is still resolving, show the loader instead of guessing
+  // at a route — this also prevents a signed-in user flashing the public
+  // Landing page ("/" renders Landing whenever user is falsy, incl. undefined).
+  if (loading) return <LoadingScreen />
 
   // A signed-in user with 2FA enabled must pass the code challenge before
   // anything else in the app is reachable.

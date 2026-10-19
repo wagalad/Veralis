@@ -311,3 +311,53 @@ input:focus, textarea:focus {
 .v-btn:active:not(:disabled) { transform: translateY(1px); }
 .v-btn-accent:hover:not(:disabled) { background: var(--accent-hover) !important; }
 .v-btn-ghost:hover:not(:disabled) { border-color: var(--text-muted) !important; color: var(--text) !important; }
+
+/* ── App loading screen ───────────────────────────────────────────────── */
+/* Shown while the auth session resolves (and mirrored pre-mount in index.html
+   as #vl-boot). Deliberately quiet: a breathing mark over a slim accent bar. */
+.vl-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  background: var(--bg);
+}
+.vl-loading__mark {
+  width: 64px;
+  height: auto;
+  animation: vl-breathe 1.8s ease-in-out infinite;
+}
+.vl-loading__track {
+  position: relative;
+  width: 132px;
+  height: 3px;
+  border-radius: 9999px;
+  background: var(--border);
+  overflow: hidden;
+}
+.vl-loading__bar {
+  position: absolute;
+  top: 0;
+  left: -40%;
+  height: 100%;
+  width: 40%;
+  border-radius: 9999px;
+  background: var(--accent);
+  animation: vl-slide 1.15s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@keyframes vl-breathe {
+  0%, 100% { opacity: 0.55; transform: scale(0.97); }
+  50%      { opacity: 1;    transform: scale(1); }
+}
+@keyframes vl-slide {
+  0%   { left: -40%; }
+  100% { left: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vl-loading__mark { animation: none; opacity: 1; }
+  .vl-loading__bar  { animation: none; left: 0; width: 100%; opacity: 0.4; }
+}
