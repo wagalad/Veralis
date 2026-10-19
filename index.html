@@ -52,6 +52,26 @@
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
       }
     </script>
+
+    <!-- Pre-mount boot loader (signed-in users). Mirrors the React LoadingScreen
+         (.vl-loading in index.css) so there's no jump when the app takes over.
+         Self-contained because index.css isn't loaded yet at this point. -->
+    <style>
+      #vl-boot { position: fixed; inset: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 22px; background: var(--bg, #0d0d0d); }
+      #vl-boot img { width: 64px; height: auto; animation: vlb-breathe 1.8s ease-in-out infinite; }
+      #vl-boot .t { position: relative; width: 132px; height: 3px; border-radius: 9999px;
+        background: #2e2e2e; overflow: hidden; }
+      #vl-boot .b { position: absolute; top: 0; left: -40%; height: 100%; width: 40%;
+        border-radius: 9999px; background: #cc0000;
+        animation: vlb-slide 1.15s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+      @keyframes vlb-breathe { 0%,100% { opacity: .55; transform: scale(.97); } 50% { opacity: 1; transform: scale(1); } }
+      @keyframes vlb-slide { 0% { left: -40%; } 100% { left: 100%; } }
+      @media (prefers-reduced-motion: reduce) {
+        #vl-boot img { animation: none; }
+        #vl-boot .b { animation: none; left: 0; width: 100%; opacity: .4; }
+      }
+    </style>
   </head>
   <body>
     <div id="root">
@@ -88,16 +108,22 @@
       </div>
     </div>
     <script>
-      // Signed-in visitors don't need the marketing shell — drop it before paint
-      // so they never see it flash before the app mounts. (Detects a Supabase session.)
+      // Signed-in visitors don't need the marketing shell — swap it for the boot
+      // loader before paint so they see the app loading, not a flash of SEO copy
+      // or a blank screen. (Detects a Supabase session.) React's LoadingScreen
+      // picks up seamlessly on mount since the two loaders are identical.
       try {
+        var signedIn = false;
         for (var i = 0; i < localStorage.length; i++) {
           var k = localStorage.key(i);
-          if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') > 0) {
-            var el = document.getElementById('seo-shell');
-            if (el) el.remove();
-            break;
-          }
+          if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') > 0) { signedIn = true; break; }
+        }
+        if (signedIn) {
+          var root = document.getElementById('root');
+          if (root) root.innerHTML =
+            '<div id="vl-boot" role="status" aria-label="Loading Veralis">' +
+            '<img src="/logo-mark.png" alt="" width="64" height="48" decoding="async">' +
+            '<div class="t"><div class="b"></div></div></div>';
         }
       } catch (e) {}
     </script>
